@@ -322,19 +322,24 @@ function EnergyFlowDiagram({
   const [newEstado, setNewEstado] = useState<'normal' | 'elevado' | 'critico'>('normal')
 
   const N = viviendas.length
-  const svgWidth = Math.max(760, N * 170)
-  const svgHeight = 360
+  const countAbove = Math.floor(N / 2)
+  const countBelow = Math.ceil(N / 2)
+  const maxInRow = Math.max(countAbove, countBelow, 1)
+
+  const svgWidth = Math.max(900, maxInRow * 240)
+  const svgHeight = 440
+  const nodeY = 220
 
   const getX = (index: number) => {
-    if (N <= 1) return svgWidth / 2
-    const padding = 90
-    const usableWidth = svgWidth - padding * 2
-    return padding + (index / (N - 1)) * usableWidth
-  }
+    const isAbove = index % 2 === 1
+    const countInRow = isAbove ? countAbove : countBelow
+    const rowIdx = Math.floor(index / 2)
 
-  const panelY = 58
-  const nodeY = 185
-  const houseY = 275
+    if (countInRow <= 1) return svgWidth / 2
+    const padding = 130
+    const usableWidth = svgWidth - padding * 2
+    return padding + (rowIdx / (countInRow - 1)) * usableWidth
+  }
 
   const handleLineClick = (i: number) => {
     setSelected(i)
@@ -375,10 +380,10 @@ function EnergyFlowDiagram({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.text }}>
-            Flujo de Energía en Tiempo Real — Red Distribución
+            Flujo de Energía en Tiempo Real — Red VPP
           </h3>
           <p style={{ margin: '2px 0 0', color: C.muted, fontSize: 12 }}>
-            Sincronización automática de Paneles Solares y Viviendas
+            Sincronización automática de Paneles Solares y Viviendas mediante VPP (Distribución en dos niveles)
           </p>
         </div>
         <div style={{ display: 'flex', gap: 16, fontSize: 11, color: C.muted }}>
@@ -411,16 +416,16 @@ function EnergyFlowDiagram({
         <svg width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ minWidth: '100%', overflow: 'visible' }}>
           {/* Sun icon centered at top */}
           <g>
-            <circle cx={svgWidth / 2} cy={24} r={14} fill={`${C.amber}25`} stroke={C.amber} strokeWidth="2" />
+            <circle cx={svgWidth / 2} cy={22} r={13} fill={`${C.amber}25`} stroke={C.amber} strokeWidth="2" />
             {[0, 45, 90, 135, 180, 225, 270, 315].map(a => {
               const rad = (a * Math.PI) / 180
               return (
                 <line
                   key={a}
-                  x1={svgWidth / 2 + Math.cos(rad) * 17}
-                  y1={24 + Math.sin(rad) * 17}
-                  x2={svgWidth / 2 + Math.cos(rad) * 23}
-                  y2={24 + Math.sin(rad) * 23}
+                  x1={svgWidth / 2 + Math.cos(rad) * 16}
+                  y1={22 + Math.sin(rad) * 16}
+                  x2={svgWidth / 2 + Math.cos(rad) * 21}
+                  y2={22 + Math.sin(rad) * 21}
                   stroke={C.amber}
                   strokeWidth="2"
                   strokeLinecap="round"
@@ -429,23 +434,23 @@ function EnergyFlowDiagram({
             })}
           </g>
 
-          {/* Central Horizontal Node Line */}
+          {/* Central Horizontal VPP Line (In the middle of the canvas) */}
           {N > 0 && (
             <g>
-              <line x1={40} y1={nodeY} x2={svgWidth - 40} y2={nodeY} stroke={C.blue} strokeWidth="3" opacity="0.8" />
+              <line x1={40} y1={nodeY} x2={svgWidth - 40} y2={nodeY} stroke={C.blue} strokeWidth="3" opacity="0.85" />
               <line x1={40} y1={nodeY} x2={svgWidth - 40} y2={nodeY} stroke="#60a5fa" strokeWidth="8" opacity="0.15" />
-              {/* Central Pill Badge */}
-              <rect x={svgWidth / 2 - 135} y={nodeY - 17} width="270" height="34" rx="17" fill="#050e21" stroke={C.blueLight} strokeWidth="2" />
-              <foreignObject x={svgWidth / 2 - 130} y={nodeY - 14} width="260" height="28">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, height: '100%', color: C.text, fontSize: 11, fontWeight: 700, letterSpacing: '0.04em' }}>
-                  <Share2 size={14} color={C.blueLight} />
-                  <span>NODO CENTRAL DE DISTRIBUCIÓN</span>
+              {/* Central VPP Pill Badge */}
+              <rect x={svgWidth / 2 - 75} y={nodeY - 17} width="150" height="34" rx="17" fill="#050e21" stroke={C.blueLight} strokeWidth="2" />
+              <foreignObject x={svgWidth / 2 - 70} y={nodeY - 14} width="140" height="28">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, height: '100%', color: C.text, fontSize: 13, fontWeight: 800, letterSpacing: '0.08em' }}>
+                  <Share2 size={15} color={C.blueLight} />
+                  <span>VPP</span>
                 </div>
               </foreignObject>
             </g>
           )}
 
-          {/* Vertical Flow Columns */}
+          {/* Render Items: Alternating Above and Below Central VPP Line */}
           {viviendas.map((v, i) => {
             const p = paneles.find(panel => panel.nombre === v.panel) || paneles[i] || {
               nombre: `Panel ${String.fromCharCode(65 + i)}`,
@@ -457,97 +462,114 @@ function EnergyFlowDiagram({
             const color = v.estado === 'normal' ? C.green : v.estado === 'elevado' ? C.amber : C.red
             const batteryColor = v.bateria > 50 ? C.green : v.bateria > 20 ? C.amber : C.red
 
+            const isAbove = i % 2 === 1
+            const itemY = isAbove ? 100 : 270
+            const xHouse = x - 48
+            const xPanel = x + 36
+
             return (
               <g key={v.id}>
-                {/* ── TOP SECTION: SOLAR PANEL ── */}
-                {/* Panel Title */}
-                <text x={x} y={panelY - 26} textAnchor="middle" fill={C.text} fontSize="11" fontWeight="700" letterSpacing="0.04em">
-                  {p.nombre.toUpperCase()}
-                </text>
+                {/* ── VERTICAL CONNECTOR LINE TO CENTRAL VPP LINE ── */}
+                {isAbove ? (
+                  <>
+                    {/* From Top Item down to VPP Line */}
+                    <line
+                      x1={x} y1={itemY + 75} x2={x} y2={nodeY - 17}
+                      stroke={color}
+                      strokeWidth={isSelected ? 3.5 : 2.5}
+                      strokeDasharray={v.estado === 'elevado' ? '6 4' : v.estado === 'critico' ? '3 3' : 'none'}
+                      opacity={isSelected ? 1 : 0.85}
+                    />
+                    <line x1={xHouse} y1={itemY + 75} x2={xPanel} y2={itemY + 75} stroke={color} strokeWidth={isSelected ? 3 : 2} opacity="0.75" />
+                    <line x1={xHouse} y1={itemY + 60} x2={xHouse} y2={itemY + 75} stroke={color} strokeWidth={isSelected ? 3 : 2} opacity="0.75" />
+                    <line x1={xPanel} y1={itemY + 60} x2={xPanel} y2={itemY + 75} stroke={color} strokeWidth={isSelected ? 3 : 2} opacity="0.75" />
+                    <circle r={isSelected ? 5 : 4} fill={color} opacity="0.95">
+                      <animateMotion
+                        dur={`${1.4 + (i % 3) * 0.3}s`}
+                        repeatCount="indefinite"
+                        path={`M ${x} ${itemY + 75} L ${x} ${nodeY - 17}`}
+                      />
+                    </circle>
+                  </>
+                ) : (
+                  <>
+                    {/* From VPP Line down to Bottom Item */}
+                    <line
+                      x1={x} y1={nodeY + 17} x2={x} y2={itemY - 22}
+                      stroke={color}
+                      strokeWidth={isSelected ? 3.5 : 2.5}
+                      strokeDasharray={v.estado === 'elevado' ? '6 4' : v.estado === 'critico' ? '3 3' : 'none'}
+                      opacity={isSelected ? 1 : 0.85}
+                    />
+                    <line x1={xHouse} y1={itemY - 22} x2={xPanel} y2={itemY - 22} stroke={color} strokeWidth={isSelected ? 3 : 2} opacity="0.75" />
+                    <line x1={xHouse} y1={itemY - 22} x2={xHouse} y2={itemY - 6} stroke={color} strokeWidth={isSelected ? 3 : 2} opacity="0.75" />
+                    <line x1={xPanel} y1={itemY - 22} x2={xPanel} y2={itemY - 16} stroke={color} strokeWidth={isSelected ? 3 : 2} opacity="0.75" />
+                    <circle r={isSelected ? 5 : 4} fill={color} opacity="0.95">
+                      <animateMotion
+                        dur={`${1.4 + (i % 3) * 0.3}s`}
+                        repeatCount="indefinite"
+                        path={`M ${x} ${nodeY + 17} L ${x} ${itemY - 22}`}
+                      />
+                    </circle>
+                  </>
+                )}
 
-                {/* Panel Grid Graphic */}
-                <g style={{ cursor: 'pointer' }} onClick={() => handleLineClick(i)}>
-                  <rect
-                    x={x - 34} y={panelY - 20} width="68" height="42" rx="5"
-                    fill="rgba(13,27,58,0.85)" stroke={isSelected ? C.blueLight : 'rgba(59,130,246,0.5)'}
-                    strokeWidth={isSelected ? 2 : 1.5}
-                  />
-                  <line x1={x - 34} y1={panelY - 6} x2={x + 34} y2={panelY - 6} stroke="rgba(59,130,246,0.3)" strokeWidth="1" />
-                  <line x1={x - 34} y1={panelY + 8} x2={x + 34} y2={panelY + 8} stroke="rgba(59,130,246,0.3)" strokeWidth="1" />
-                  <line x1={x - 11} y1={panelY - 20} x2={x - 11} y2={panelY + 22} stroke="rgba(59,130,246,0.3)" strokeWidth="1" />
-                  <line x1={x + 11} y1={panelY - 20} x2={x + 11} y2={panelY + 22} stroke="rgba(59,130,246,0.3)" strokeWidth="1" />
-                </g>
-
-                {/* Battery Indicator Pill */}
-                <rect x={x - 26} y={panelY + 27} width="52" height="16" rx="8" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-                <rect x={x - 22} y={panelY + 30} width={Math.max(4, (v.bateria / 100) * 44)} height="10" rx="4" fill={batteryColor} opacity="0.8" />
-                <text x={x} y={panelY + 39} textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="700">
-                  {v.bateria}%
-                </text>
-
-                {/* kW Power Text */}
-                <text x={x} y={panelY + 56} textAnchor="middle" fill={color} fontSize="11" fontWeight="700">
-                  {p.potencia} kW
-                </text>
-
-                {/* ── FLOW LINE 1: PANEL TO CENTRAL NODE ── */}
-                <line
-                  x1={x} y1={panelY + 62} x2={x} y2={nodeY - 18}
-                  stroke={color}
-                  strokeWidth={isSelected ? 3.5 : 2.5}
-                  strokeDasharray={v.estado === 'elevado' ? '6 4' : v.estado === 'critico' ? '3 3' : 'none'}
-                  opacity={isSelected ? 1 : 0.8}
-                />
-                {/* Animated Dot Flow 1 */}
-                <circle r={isSelected ? 5 : 4} fill={color} opacity="0.95">
-                  <animateMotion
-                    dur={`${1.4 + (i % 3) * 0.3}s`}
-                    repeatCount="indefinite"
-                    path={`M ${x} ${panelY + 62} L ${x} ${nodeY - 18}`}
-                  />
-                </circle>
-
-                {/* ── FLOW LINE 2: CENTRAL NODE TO HOUSE ── */}
-                <line
-                  x1={x} y1={nodeY + 18} x2={x} y2={houseY - 26}
-                  stroke={color}
-                  strokeWidth={isSelected ? 3.5 : 2.5}
-                  strokeDasharray={v.estado === 'elevado' ? '6 4' : v.estado === 'critico' ? '3 3' : 'none'}
-                  opacity={isSelected ? 1 : 0.8}
-                />
-                {/* Animated Dot Flow 2 */}
-                <circle r={isSelected ? 5 : 4} fill={color} opacity="0.95">
-                  <animateMotion
-                    dur={`${1.4 + (i % 3) * 0.3}s`}
-                    repeatCount="indefinite"
-                    path={`M ${x} ${nodeY + 18} L ${x} ${houseY - 26}`}
-                  />
-                </circle>
-
-                {/* ── BOTTOM SECTION: VIVIENDA ── */}
-                {/* Panel Tag Badge above House */}
-                <rect x={x - 30} y={houseY - 25} width="60" height="17" rx="5" fill="rgba(37,99,235,0.18)" stroke="rgba(59,130,246,0.4)" strokeWidth="1" />
-                <text x={x} y={houseY - 13} textAnchor="middle" fill="#60a5fa" fontSize="9" fontWeight="600">
-                  ⚡ {v.panel}
-                </text>
-
-                {/* House graphic */}
+                {/* ── LEFT: VIVIENDA GRAPHIC & LABELS ── */}
                 <g style={{ cursor: 'pointer' }} onClick={() => handleLineClick(i)}>
                   {/* Roof */}
                   <polygon
-                    points={`${x},${houseY - 5} ${x - 26},${houseY + 14} ${x + 26},${houseY + 14}`}
+                    points={`${xHouse},${itemY - 6} ${xHouse - 26},${itemY + 16} ${xHouse + 26},${itemY + 16}`}
                     fill={`${color}18`} stroke={`${color}70`} strokeWidth="1.6"
                   />
                   {/* Base */}
                   <rect
-                    x={x - 22} y={houseY + 14} width="44" height="28" rx="3"
+                    x={xHouse - 22} y={itemY + 16} width="44" height="30" rx="3"
                     fill={`${color}12`} stroke={`${color}60`} strokeWidth="1.6"
                   />
                   {/* Door */}
-                  <rect x={x - 6} y={houseY + 24} width="12" height="18" rx="1.5" fill={`${color}35`} />
+                  <rect x={xHouse - 6} y={itemY + 28} width="12" height="18" rx="1.5" fill={`${color}35`} />
+
+                  {/* House Name & Consumo */}
+                  <text x={xHouse} y={itemY + 62} textAnchor="middle" fill={C.text} fontSize="11" fontWeight="600">
+                    {v.nombre.replace('Casa ', '')}
+                  </text>
+                  <text x={xHouse} y={itemY + 76} textAnchor="middle" fill={color} fontSize="11" fontWeight="700">
+                    {v.consumo} kW
+                  </text>
                 </g>
 
-                {/* Delete (X) Circular Button on House */}
+                {/* ── RIGHT: PANEL SOLAR CON TODAS SUS CARACTERÍSTICAS ── */}
+                <g style={{ cursor: 'pointer' }} onClick={() => handleLineClick(i)}>
+                  {/* Panel Title */}
+                  <text x={xPanel} y={itemY - 24} textAnchor="middle" fill={C.text} fontSize="11" fontWeight="700" letterSpacing="0.04em">
+                    {p.nombre.toUpperCase()}
+                  </text>
+
+                  {/* Panel Grid Box */}
+                  <rect
+                    x={xPanel - 32} y={itemY - 18} width="64" height="40" rx="5"
+                    fill="rgba(13,27,58,0.85)" stroke={isSelected ? C.blueLight : 'rgba(59,130,246,0.5)'}
+                    strokeWidth={isSelected ? 2 : 1.5}
+                  />
+                  <line x1={xPanel - 32} y1={itemY - 4} x2={xPanel + 32} y2={itemY - 4} stroke="rgba(59,130,246,0.3)" strokeWidth="1" />
+                  <line x1={xPanel - 32} y1={itemY + 10} x2={xPanel + 32} y2={itemY + 10} stroke="rgba(59,130,246,0.3)" strokeWidth="1" />
+                  <line x1={xPanel - 10} y1={itemY - 18} x2={xPanel - 10} y2={itemY + 22} stroke="rgba(59,130,246,0.3)" strokeWidth="1" />
+                  <line x1={xPanel + 10} y1={itemY - 18} x2={xPanel + 10} y2={itemY + 22} stroke="rgba(59,130,246,0.3)" strokeWidth="1" />
+
+                  {/* Battery Indicator Pill */}
+                  <rect x={xPanel - 25} y={itemY + 27} width="50" height="16" rx="8" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                  <rect x={xPanel - 21} y={itemY + 30} width={Math.max(4, (v.bateria / 100) * 42)} height="10" rx="4" fill={batteryColor} opacity="0.8" />
+                  <text x={xPanel} y={itemY + 39} textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="700">
+                    {v.bateria}%
+                  </text>
+
+                  {/* kW Power Text */}
+                  <text x={xPanel} y={itemY + 58} textAnchor="middle" fill={color} fontSize="11" fontWeight="700">
+                    {p.potencia} kW
+                  </text>
+                </g>
+
+                {/* Delete Button (✕) */}
                 <g
                   style={{ cursor: 'pointer' }}
                   onClick={(e) => {
@@ -556,19 +578,11 @@ function EnergyFlowDiagram({
                     triggerToast(`🗑 Se ha eliminado ${v.nombre} y su panel solar asociado.`)
                   }}
                 >
-                  <circle cx={x + 28} cy={houseY - 10} r="9" fill="#ef444425" stroke="#ef4444" strokeWidth="1.2" />
-                  <text x={x + 28} y={houseY - 6.5} textAnchor="middle" fill="#ef4444" fontSize="11" fontWeight="800">
+                  <circle cx={xPanel + 42} cy={itemY - 16} r="9" fill="#ef444425" stroke="#ef4444" strokeWidth="1.2" />
+                  <text x={xPanel + 42} y={itemY - 12.5} textAnchor="middle" fill="#ef4444" fontSize="11" fontWeight="800">
                     ✕
                   </text>
                 </g>
-
-                {/* House Name & Consumo */}
-                <text x={x} y={houseY + 54} textAnchor="middle" fill={C.text} fontSize="10" fontWeight="600">
-                  {v.nombre.replace('Casa ', '')}
-                </text>
-                <text x={x} y={houseY + 67} textAnchor="middle" fill={color} fontSize="10" fontWeight="700">
-                  {v.consumo} kW
-                </text>
               </g>
             )
           })}
