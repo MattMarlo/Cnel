@@ -5,7 +5,8 @@ import {
   Zap, Battery, AlertTriangle, CheckCircle, XCircle,
   Clock, RefreshCw, Download, Plus, Search, X,
   TrendingUp, Gauge, Wifi, WifiOff,
-  Trash2, Scale, Share2, ArrowRight
+  Trash2, Scale, Share2, ArrowRight,
+  ChevronLeft, ChevronRight, Menu
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -1673,23 +1674,52 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
         borderRight: `1px solid ${C.border}`,
         overflow: 'hidden',
       }}>
-        {/* Logo */}
+        {/* Logo & Toggle */}
         <div style={{
           height: 64, display: 'flex', alignItems: 'center',
-          padding: collapsed ? '0 16px' : '0 20px',
-          borderBottom: `1px solid ${C.border}`, gap: 10, flexShrink: 0
+          justifyContent: collapsed ? 'center' : 'space-between',
+          padding: collapsed ? '0 12px' : '0 16px',
+          borderBottom: `1px solid ${C.border}`, flexShrink: 0
         }}>
-          <div style={{
-            width: 32, height: 32, flexShrink: 0,
-            background: `linear-gradient(135deg, ${C.amber}, ${C.blue})`,
-            borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <Sun size={18} color="#fff" />
+          <div
+            onClick={() => collapsed && setCollapsed(false)}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: collapsed ? 'pointer' : 'default' }}
+            title={collapsed ? "Expandir menú" : undefined}
+          >
+            <div style={{
+              width: 32, height: 32, flexShrink: 0,
+              background: `linear-gradient(135deg, ${C.amber}, ${C.blue})`,
+              borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Sun size={18} color="#fff" />
+            </div>
+            {!collapsed && (
+              <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                SOLAR<span style={{ color: C.blueLight }}>SMART</span>
+              </span>
+            )}
           </div>
           {!collapsed && (
-            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
-              SOLAR<span style={{ color: C.blueLight }}>SMART</span>
-            </span>
+            <button
+              onClick={() => setCollapsed(true)}
+              title="Contraer menú lateral"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: `1px solid ${C.border}`,
+                borderRadius: 6,
+                padding: '6px',
+                color: C.dim,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = C.text }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = C.dim }}
+            >
+              <ChevronLeft size={16} />
+            </button>
           )}
         </div>
 
@@ -1698,7 +1728,7 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
           {NAV_ITEMS.map(item => {
             const active = page === item.key
             return (
-              <button key={item.key} onClick={() => setPage(item.key)} style={{
+              <button key={item.key} onClick={() => setPage(item.key)} title={item.label} style={{
                 width: '100%', display: 'flex', alignItems: 'center',
                 gap: 12, padding: '10px 14px', marginBottom: 2, borderRadius: 8, border: 'none',
                 background: active ? `${C.blue}25` : 'transparent',
@@ -1716,11 +1746,30 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
 
         {/* Bottom */}
         <div style={{ padding: '12px 8px', borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <button onClick={onLogout} style={{
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            title={collapsed ? "Expandir menú" : "Contraer menú"}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: 12, padding: '10px 14px', borderRadius: 8, border: 'none',
+              background: 'transparent', color: C.dim, cursor: 'pointer', fontSize: 14,
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = C.text; e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = C.dim; e.currentTarget.style.background = 'transparent' }}
+          >
+            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            {!collapsed && <span>Contraer menú</span>}
+          </button>
+          <button onClick={onLogout} title="Cerrar sesión" style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
             gap: 12, padding: '10px 14px', borderRadius: 8, border: 'none',
-            background: 'transparent', color: C.dim, cursor: 'pointer', fontSize: 14
-          }}>
+            background: 'transparent', color: C.dim, cursor: 'pointer', fontSize: 14,
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = C.text; e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = C.dim; e.currentTarget.style.background = 'transparent' }}
+          >
             <EyeOff size={18} />
             {!collapsed && <span>Cerrar sesión</span>}
           </button>
@@ -1734,9 +1783,31 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
           justifyContent: 'space-between', padding: '0 28px',
           borderBottom: `1px solid ${C.border}`, background: 'rgba(6,14,30,0.8)'
         }}>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>
-            {NAV_ITEMS.find(n => n.key === page)?.label}
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              title={collapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: '8px',
+                color: C.text,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+            >
+              <Menu size={18} />
+            </button>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>
+              {NAV_ITEMS.find(n => n.key === page)?.label}
+            </h1>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.green }} />
             <span style={{ fontSize: 12, color: C.green }}>Sistema En Línea</span>
