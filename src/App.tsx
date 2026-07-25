@@ -327,8 +327,8 @@ function EnergyFlowDiagram({
   const maxInRow = Math.max(countAbove, countBelow, 1)
 
   const svgWidth = Math.max(900, maxInRow * 240)
-  const svgHeight = 440
-  const nodeY = 220
+  const svgHeight = 500
+  const nodeY = 250
 
   const getX = (index: number) => {
     const isAbove = index % 2 === 1
@@ -463,7 +463,7 @@ function EnergyFlowDiagram({
             const batteryColor = v.bateria > 50 ? C.green : v.bateria > 20 ? C.amber : C.red
 
             const isAbove = i % 2 === 1
-            const itemY = isAbove ? 100 : 270
+            const itemY = isAbove ? 80 : 350
             const xHouse = x - 48
             const xPanel = x + 36
 
