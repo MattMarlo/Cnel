@@ -1431,32 +1431,65 @@ function Solicitudes({ viviendas }: { viviendas: ViviendaItem[] }) {
 
 // ─── Facturación ────────────────────────────────────────────────────────────
 function Facturacion({ viviendas }: { viviendas: ViviendaItem[] }) {
+  const precioCompra = 0.14
+  const precioVenta = 0.10
+
+  const rows = viviendas.map((v) => {
+    const compra = Math.max(0, v.consumo - v.disponible)
+    const vende = Math.max(0, v.disponible - v.consumo)
+    const extra = v.extraAsignado
+    const total = (compra + extra) * precioCompra - vende * precioVenta
+    return { v, compra, vende, extra, total }
+  })
+
+  const totCompra = rows.reduce((s, r) => s + r.compra, 0)
+  const totVende = rows.reduce((s, r) => s + r.vende, 0)
+  const totExtra = rows.reduce((s, r) => s + r.extra, 0)
+  const totTotal = rows.reduce((s, r) => s + r.total, 0)
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Facturación</h2>
-        <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Julio 2026 · Precio base: €0.14/kWh</p>
+        <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>
+          Julio 2026 · Compra: €{precioCompra.toFixed(2)}/kWh · Venta: €{precioVenta.toFixed(2)}/kWh
+        </p>
       </div>
 
       <div style={{ ...glass, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-              {['Vivienda', 'Panel', 'Energía extra (kWh)', 'Total €'].map(h => (
+              {['Vivienda', 'Panel', 'Compra (kWh)', 'Vende (kWh)', 'Extra asignado (kWh)', 'Total €'].map(h => (
                 <th key={h} style={{ padding: '12px 20px', textAlign: 'left', color: C.dim, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {viviendas.map((v) => (
+            {rows.map(({ v, compra, vende, extra, total }) => (
               <tr key={v.id} style={{ borderBottom: `1px solid ${C.border}` }}>
                 <td style={{ padding: '14px 20px', fontWeight: 600 }}>{v.nombre}</td>
                 <td style={{ padding: '14px 20px', color: C.blueLight }}>{v.panel}</td>
-                <td style={{ padding: '14px 20px', color: C.amber, fontWeight: 700 }}>{v.extraAsignado.toFixed(1)}</td>
-                <td style={{ padding: '14px 20px', fontWeight: 700, color: C.green }}>€{(v.extraAsignado * 0.14).toFixed(2)}</td>
+                <td style={{ padding: '14px 20px', color: compra > 0 ? C.red : C.dim, fontWeight: 700 }}>{compra.toFixed(1)}</td>
+                <td style={{ padding: '14px 20px', color: vende > 0 ? C.green : C.dim, fontWeight: 700 }}>{vende.toFixed(1)}</td>
+                <td style={{ padding: '14px 20px', color: extra > 0 ? C.amber : C.dim, fontWeight: 700 }}>{extra.toFixed(1)}</td>
+                <td style={{ padding: '14px 20px', fontWeight: 700, color: total > 0 ? C.red : total < 0 ? C.green : C.dim }}>
+                  {total < 0 ? `-€${Math.abs(total).toFixed(2)}` : `€${total.toFixed(2)}`}
+                </td>
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr style={{ borderTop: `2px solid ${C.borderBright}`, background: 'rgba(37,99,235,0.06)' }}>
+              <td style={{ padding: '14px 20px', fontWeight: 800, fontSize: 12, textTransform: 'uppercase', color: C.blueLight }} colSpan={2}>Totales</td>
+              <td style={{ padding: '14px 20px', fontWeight: 800, color: totCompra > 0 ? C.red : C.dim }}>{totCompra.toFixed(1)}</td>
+              <td style={{ padding: '14px 20px', fontWeight: 800, color: totVende > 0 ? C.green : C.dim }}>{totVende.toFixed(1)}</td>
+              <td style={{ padding: '14px 20px', fontWeight: 800, color: totExtra > 0 ? C.amber : C.dim }}>{totExtra.toFixed(1)}</td>
+              <td style={{ padding: '14px 20px', fontWeight: 800, color: totTotal > 0 ? C.red : totTotal < 0 ? C.green : C.dim }}>
+                {totTotal < 0 ? `-€${Math.abs(totTotal).toFixed(2)}` : `€${totTotal.toFixed(2)}`}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
@@ -1488,44 +1521,42 @@ function Notificaciones() {
 
 // ─── Reportes ───────────────────────────────────────────────────────────────
 function Reportes({ viviendas, paneles }: { viviendas: ViviendaItem[]; paneles: PanelItem[] }) {
-  const reportesPaneles = paneles.map(p => ({ name: p.nombre, kWh: p.generado }))
-  const reportesConsumo = viviendas.map(v => ({ name: v.nombre.replace('Casa ', ''), kWh: parseFloat((v.consumo * 12).toFixed(1)) }))
-  const COLORS = [C.blue, C.green, C.amber, C.purple, '#ec4899']
+  const datosCompraVende = viviendas.map(v => ({
+    name: v.nombre.replace('Casa ', ''),
+    compra: parseFloat(Math.max(0, v.consumo - v.disponible).toFixed(1)),
+    vende: parseFloat(Math.max(0, v.disponible - v.consumo).toFixed(1)),
+  }))
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Reportes y Estadísticas</h2>
-        <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Análisis de rendimiento en tiempo real</p>
+        <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Análisis de compra y venta de energía por vivienda</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <div style={{ ...glass, padding: 20 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700 }}>Generación por Panel</h3>
+          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700 }}>Compra por Vivienda (kWh)</h3>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={reportesPaneles}>
+            <BarChart data={datosCompraVende}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" tick={{ fill: C.dim, fontSize: 11 }} />
               <YAxis tick={{ fill: C.dim, fontSize: 11 }} />
               <Tooltip contentStyle={customTooltipStyle} />
-              <Bar dataKey="kWh" radius={[4, 4, 0, 0]}>
-                {reportesPaneles.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Bar>
+              <Bar dataKey="compra" name="Compra" radius={[4, 4, 0, 0]} fill={C.red} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div style={{ ...glass, padding: 20 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700 }}>Consumo por Vivienda</h3>
+          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700 }}>Vende por Vivienda (kWh)</h3>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={reportesConsumo}>
+            <BarChart data={datosCompraVende}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" tick={{ fill: C.dim, fontSize: 11 }} />
               <YAxis tick={{ fill: C.dim, fontSize: 11 }} />
               <Tooltip contentStyle={customTooltipStyle} />
-              <Bar dataKey="kWh" radius={[4, 4, 0, 0]}>
-                {reportesConsumo.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Bar>
+              <Bar dataKey="vende" name="Vende" radius={[4, 4, 0, 0]} fill={C.green} />
             </BarChart>
           </ResponsiveContainer>
         </div>
