@@ -1,16 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   LayoutDashboard, Home, Sun, Activity, FileText,
-  DollarSign, Bell, BarChart2, Settings, Eye, EyeOff,
-  Zap, Battery, AlertTriangle, CheckCircle, XCircle,
-  Clock, RefreshCw, Download, Plus, Search, X,
-  TrendingUp, Gauge, Wifi, WifiOff,
-  Trash2, Scale, Share2,
-  ChevronLeft, ChevronRight, Menu
+  DollarSign, Bell, BarChart2, Eye, EyeOff,
+  Zap, Battery, AlertTriangle, CheckCircle,
+  Search, X, Users, UserPlus, Shield, User,
+  Mail, Key, Phone, Trash2, Send, ChevronLeft,
+  ChevronRight, Menu, Share2
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend, AreaChart, Area, PieChart, Pie, Cell
+  Tooltip, ResponsiveContainer, AreaChart, Area
 } from 'recharts'
 
 // ─── Design tokens ──────────────────────────────────────────────────────────
@@ -75,7 +74,98 @@ export interface PanelItem {
   asignadoA: string
 }
 
+export interface EnergyRequest {
+  id: number
+  userId?: string
+  vivienda: string
+  viviendaId?: number
+  fecha: string
+  hora: string
+  energia: number
+  consumoActual: number
+  motivo: string
+  prioridad?: 'normal' | 'alta' | 'emergencia'
+  estado: 'pendiente' | 'aprobada' | 'rechazada'
+  costo: number
+  asignado?: string
+  asignadoKwh?: number
+}
+
+export interface UserItem {
+  id: string
+  nombre: string
+  email: string
+  pass: string
+  rol: 'admin' | 'usuario'
+  viviendaId?: number
+  viviendaNombre?: string
+  fechaRegistro: string
+  estado: 'activo' | 'inactivo'
+  telefono?: string
+}
+
 // ─── Mock Data ──────────────────────────────────────────────────────────────
+const INITIAL_USERS: UserItem[] = [
+  {
+    id: 'u1',
+    nombre: 'Administrador del Sistema',
+    email: 'admin@solarsmart.io',
+    pass: 'admin',
+    rol: 'admin',
+    fechaRegistro: '2026-01-15',
+    estado: 'activo',
+    telefono: '+593 99 123 4567',
+  },
+  {
+    id: 'u2',
+    nombre: 'Juan García (Usuario Demostración)',
+    email: 'usuario@gmail.com',
+    pass: 'usuario',
+    rol: 'usuario',
+    viviendaId: 1,
+    viviendaNombre: 'Casa García-López',
+    fechaRegistro: '2026-07-01',
+    estado: 'activo',
+    telefono: '+593 98 765 4321',
+  },
+  {
+    id: 'u3',
+    nombre: 'Carlos Martínez',
+    email: 'carlos.martinez@gmail.com',
+    pass: 'martinez123',
+    rol: 'usuario',
+    viviendaId: 2,
+    viviendaNombre: 'Casa Martínez',
+    fechaRegistro: '2026-07-10',
+    estado: 'activo',
+    telefono: '+593 99 888 7777',
+  },
+  {
+    id: 'u4',
+    nombre: 'Elena López',
+    email: 'elena.lopez@gmail.com',
+    pass: 'lopez123',
+    rol: 'usuario',
+    viviendaId: 3,
+    viviendaNombre: 'Casa López',
+    fechaRegistro: '2026-07-15',
+    estado: 'activo',
+    telefono: '+593 96 555 4444',
+  },
+  {
+    id: 'u5',
+    nombre: 'Roberto Sánchez',
+    email: 'roberto.sanchez@gmail.com',
+    pass: 'sanchez123',
+    rol: 'usuario',
+    viviendaId: 4,
+    viviendaNombre: 'Casa Sánchez',
+    fechaRegistro: '2026-07-20',
+    estado: 'activo',
+    telefono: '+593 97 111 2222',
+  },
+]
+
 const INITIAL_VIVIENDAS: ViviendaItem[] = [
   { id: 1, nombre: 'Casa García-López', panel: 'Panel A', consumo: 3.2, disponible: 8.4, bateria: 74, sensor: true, online: true, estado: 'normal', limite: 5.0, extraAsignado: 1.2, eolicaPotencia: 0, tieneEolica: false, charging: false },
   { id: 2, nombre: 'Casa Martínez', panel: 'Panel B', consumo: 6.8, disponible: 2.1, bateria: 31, sensor: true, online: true, estado: 'elevado', limite: 7.0, extraAsignado: 2.5, eolicaPotencia: 0, tieneEolica: false, charging: false },
@@ -90,50 +180,21 @@ const INITIAL_PANELES: PanelItem[] = [
   { id: 'D', nombre: 'Panel D', generado: 24.1, potencia: 5.8, temp: 48, radiacion: 940, estado: 'activo', utilizacion: 71, disponible: 11.2, asignadoA: 'Casa Sánchez' },
 ]
 
-const solicitudes = [
-  { id: 1, vivienda: 'Casa García-López', fecha: '2026-07-23', hora: '09:14', energia: 2.0, consumoActual: 3.2, motivo: 'Aire acondicionado adicional', estado: 'pendiente', costo: 0.28 },
-  { id: 2, vivienda: 'Casa Martínez', fecha: '2026-07-23', hora: '08:47', energia: 3.5, consumoActual: 6.8, motivo: 'Recarga vehículo eléctrico', estado: 'pendiente', costo: 0.49 },
-  { id: 3, vivienda: 'Casa López', fecha: '2026-07-22', hora: '19:30', energia: 1.5, consumoActual: 9.1, motivo: 'Sistema de calefacción', estado: 'aprobada', costo: 0.21 },
-  { id: 4, vivienda: 'Casa Sánchez', fecha: '2026-07-22', hora: '14:22', energia: 1.0, consumoActual: 2.7, motivo: 'Electrodomésticos adicionales', estado: 'rechazada', costo: 0.14 },
-  { id: 5, vivienda: 'Casa Martínez', fecha: '2026-07-21', hora: '11:05', energia: 2.2, consumoActual: 5.3, motivo: 'Trabajo desde casa', estado: 'aprobada', costo: 0.31 },
-]
-
-const sensores = [
-  { vivienda: 'Casa García-López', voltaje: 220.3, corriente: 14.5, potencia: 3.2, instantaneo: 3.1, acumulado: 48.2, temp: 24.1, conectado: true, ultima: '10:42:18' },
-  { vivienda: 'Casa Martínez', voltaje: 219.8, corriente: 30.9, potencia: 6.8, instantaneo: 6.9, acumulado: 91.4, temp: 26.3, conectado: true, ultima: '10:42:15' },
-  { vivienda: 'Casa López', voltaje: 221.1, corriente: 41.2, potencia: 9.1, instantaneo: 9.0, acumulado: 124.7, temp: 28.7, conectado: false, ultima: '10:38:02' },
-  { vivienda: 'Casa Sánchez', voltaje: 220.6, corriente: 12.2, potencia: 2.7, instantaneo: 2.8, acumulado: 36.9, temp: 23.4, conectado: true, ultima: '10:42:19' },
+const INITIAL_SOLICITUDES: EnergyRequest[] = [
+  { id: 1, userId: 'u2', vivienda: 'Casa García-López', viviendaId: 1, fecha: '2026-07-27', hora: '09:14', energia: 2.0, consumoActual: 3.2, motivo: 'Aire acondicionado adicional', prioridad: 'normal', estado: 'pendiente', costo: 0.28 },
+  { id: 2, userId: 'u3', vivienda: 'Casa Martínez', viviendaId: 2, fecha: '2026-07-27', hora: '08:47', energia: 3.5, consumoActual: 6.8, motivo: 'Recarga vehículo eléctrico', prioridad: 'alta', estado: 'pendiente', costo: 0.49 },
+  { id: 3, userId: 'u4', vivienda: 'Casa López', viviendaId: 3, fecha: '2026-07-26', hora: '19:30', energia: 1.5, consumoActual: 9.1, motivo: 'Sistema de calefacción', prioridad: 'emergencia', estado: 'aprobada', costo: 0.21, asignado: 'Panel C', asignadoKwh: 1.5 },
+  { id: 4, userId: 'u5', vivienda: 'Casa Sánchez', viviendaId: 4, fecha: '2026-07-26', hora: '14:22', energia: 1.0, consumoActual: 2.7, motivo: 'Electrodomésticos adicionales', prioridad: 'normal', estado: 'rechazada', costo: 0.14 },
+  { id: 5, userId: 'u3', vivienda: 'Casa Martínez', viviendaId: 2, fecha: '2026-07-25', hora: '11:05', energia: 2.2, consumoActual: 5.3, motivo: 'Trabajo desde casa', prioridad: 'normal', estado: 'aprobada', costo: 0.31, asignado: 'Panel B', asignadoKwh: 2.2 },
 ]
 
 const notificaciones = [
-  { id: 1, tipo: 'alerta', icono: 'alert', msg: 'Alto consumo detectado en Casa López (9.1 kW)', hora: '10:41', leida: false },
-  { id: 2, tipo: 'info', icono: 'sensor', msg: 'Sensor desconectado en Casa López', hora: '10:38', leida: false },
-  { id: 3, tipo: 'exito', icono: 'check', msg: 'Solicitud de energía aprobada para Casa López', hora: '09:15', leida: false },
-  { id: 4, tipo: 'info', icono: 'request', msg: 'Nueva solicitud de energía de Casa Martínez (3.5 kWh)', hora: '08:47', leida: true },
-  { id: 5, tipo: 'alerta', icono: 'panel', msg: 'Panel C en modo mantenimiento — baja generación', hora: '07:30', leida: true },
-  { id: 6, tipo: 'error', icono: 'deficit', msg: 'Déficit energético detectado en Casa López', hora: '07:15', leida: true },
-]
-
-const facturas = [
-  { vivienda: 'Casa García-López', extra: 1.2, precio: 0.14, total: 0.17, estado: 'pagado' },
-  { vivienda: 'Casa Martínez', extra: 5.7, precio: 0.14, total: 0.80, estado: 'pendiente' },
-  { vivienda: 'Casa López', extra: 8.3, precio: 0.14, total: 1.16, estado: 'pendiente' },
-  { vivienda: 'Casa Sánchez', extra: 0.0, precio: 0.14, total: 0.00, estado: 'pagado' },
-]
-
-const genHours = Array.from({ length: 24 }, (_, i) => ({
-  hora: `${i.toString().padStart(2, '0')}:00`,
-  generado: Math.max(0, Math.sin((i - 6) * Math.PI / 12) * 18 + Math.random() * 3),
-  consumido: 8 + Math.sin(i * 0.5) * 3 + Math.random() * 2,
-}))
-
-const costosMensuales = [
-  { mes: 'Feb', total: 1.85 },
-  { mes: 'Mar', total: 2.10 },
-  { mes: 'Abr', total: 1.60 },
-  { mes: 'May', total: 2.80 },
-  { mes: 'Jun', total: 3.20 },
-  { mes: 'Jul', total: 2.13 },
+  { id: 1, tipo: 'alerta', msg: 'Alto consumo detectado en Casa López (9.1 kW)', hora: '10:41' },
+  { id: 2, tipo: 'info', msg: 'Sensor desconectado en Casa López', hora: '10:38' },
+  { id: 3, tipo: 'exito', msg: 'Solicitud de energía aprobada para Casa López', hora: '09:15' },
+  { id: 4, tipo: 'info', msg: 'Nueva solicitud de energía de Casa Martínez (3.5 kWh)', hora: '08:47' },
+  { id: 5, tipo: 'alerta', msg: 'Panel C en modo mantenimiento — baja generación', hora: '07:30' },
+  { id: 6, tipo: 'error', msg: 'Déficit energético detectado en Casa López', hora: '07:15' },
 ]
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -148,7 +209,8 @@ function Badge({ estado }: { estado: string }) {
     pendiente: { color: C.amber, label: 'Pendiente' },
     aprobada: { color: C.green, label: 'Aprobada' },
     rechazada: { color: C.red, label: 'Rechazada' },
-    pagado: { color: C.green, label: 'Pagado' },
+    admin: { color: C.purple, label: 'Administrador' },
+    usuario: { color: C.blueLight, label: 'Usuario Residencial' },
   }
   const { color, label } = map[estado] || { color: C.muted, label: estado }
   return (
@@ -197,6 +259,20 @@ function Modal({ title, onClose, children, maxWidth }: { title: string; onClose:
   )
 }
 
+function AssignRow({ r, paneles, onAssign }: { r: any; paneles: PanelItem[]; onAssign: (panelId: string, kwh: number) => void }) {
+  const [panelId, setPanelId] = useState<string>(paneles[0]?.id || 'A')
+  const [kwh, setKwh] = useState<string>((paneles[0]?.disponible && Math.min(paneles[0].disponible, r.energia)) ? String(Math.min(paneles[0].disponible, r.energia)) : String(r.energia || '1'))
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <select value={panelId} onChange={e => setPanelId(e.target.value)} style={{ padding: '8px 10px', ...glass, color: C.text, background: C.bg }}>
+        {paneles.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.disponible} kWh disp.)</option>)}
+      </select>
+      <input type="number" step="0.1" value={kwh} onChange={e => setKwh(e.target.value)} style={{ width: 80, padding: '8px 10px', ...glass, color: C.text }} />
+      <button onClick={() => onAssign(panelId, parseFloat(kwh))} style={{ background: C.blue, color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>Asignar</button>
+    </div>
+  )
+}
+
 const customTooltipStyle = {
   background: 'rgba(13,27,58,0.95)',
   border: `1px solid ${C.border}`,
@@ -205,12 +281,41 @@ const customTooltipStyle = {
   fontSize: 12,
 }
 
-// ─── Screens ────────────────────────────────────────────────────────────────
-
-function LoginPage({ onLogin }: { onLogin: () => void }) {
-  const [email, setEmail] = useState('admin@solarsmart.io')
-  const [pass, setPass] = useState('••••••••')
+// ─── LoginPage ──────────────────────────────────────────────────────────────
+function LoginPage({ users, onLogin }: { users: UserItem[]; onLogin: (user: UserItem) => void }) {
+  const [email, setEmail] = useState('usuario@gmail.com')
+  const [pass, setPass] = useState('usuario')
   const [showPass, setShowPass] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleAuth = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    setError(null)
+    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase().trim())
+    
+    if (!found) {
+      setError('El correo electrónico no se encuentra registrado.')
+      return
+    }
+
+    if (found.pass !== pass) {
+      setError('Contraseña incorrecta. Verifica tus credenciales.')
+      return
+    }
+
+    if (found.estado !== 'activo') {
+      setError('Esta cuenta de usuario se encuentra inactiva.')
+      return
+    }
+
+    onLogin(found)
+  }
+
+  const fillQuick = (e: string, p: string) => {
+    setEmail(e)
+    setPass(p)
+    setError(null)
+  }
 
   return (
     <div style={{
@@ -219,9 +324,9 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
     }}>
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        padding: '60px 80px', maxWidth: 520
+        padding: '60px 80px', maxWidth: 540
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 48 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 40 }}>
           <div style={{
             width: 40, height: 40, background: `linear-gradient(135deg, ${C.amber}, ${C.blue})`,
             borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -233,18 +338,67 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
           </span>
         </div>
 
-        <h1 style={{ fontSize: 32, fontWeight: 800, margin: '0 0 8px', letterSpacing: '-0.03em' }}>
+        <h1 style={{ fontSize: 30, fontWeight: 800, margin: '0 0 8px', letterSpacing: '-0.03em' }}>
           Bienvenido de nuevo
         </h1>
-        <p style={{ color: C.muted, marginBottom: 36, fontSize: 15 }}>
-          Sistema de Gestión de Energía Solar
+        <p style={{ color: C.muted, marginBottom: 28, fontSize: 14 }}>
+          Sistema de Gestión de Energía Solar & Apartado de Usuario
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Quick Credentials Helpers */}
+        <div style={{
+          ...glass, padding: 14, marginBottom: 24, background: 'rgba(37,99,235,0.06)',
+          border: `1px solid ${C.blue}30`, borderRadius: 10
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.blueLight, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            ⚡ Accesos Rápidos de Prueba:
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => fillQuick('usuario@gmail.com', 'usuario')}
+              style={{
+                background: 'rgba(34,197,94,0.15)', border: `1px solid ${C.green}40`,
+                color: C.green, padding: '6px 12px', borderRadius: 6, fontSize: 12,
+                fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+              }}
+            >
+              <User size={13} />
+              Usuario: usuario@gmail.com
+            </button>
+            <button
+              type="button"
+              onClick={() => fillQuick('admin@solarsmart.io', 'admin')}
+              style={{
+                background: 'rgba(139,92,246,0.15)', border: `1px solid ${C.purple}40`,
+                color: C.purple, padding: '6px 12px', borderRadius: 6, fontSize: 12,
+                fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+              }}
+            >
+              <Shield size={13} />
+              Admin: admin@solarsmart.io
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div style={{
+            padding: '12px 14px', background: `${C.red}15`, border: `1px solid ${C.red}40`,
+            borderRadius: 8, color: C.red, fontSize: 13, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8
+          }}>
+            <AlertTriangle size={16} />
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Correo electrónico</label>
             <input
+              type="email"
               value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="correo@ejemplo.com"
+              required
               style={{
                 width: '100%', padding: '12px 16px', ...glass,
                 color: C.text, fontSize: 15, outline: 'none',
@@ -257,13 +411,15 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
             <div style={{ position: 'relative' }}>
               <input
                 type={showPass ? 'text' : 'password'} value={pass} onChange={e => setPass(e.target.value)}
+                placeholder="••••••••"
+                required
                 style={{
                   width: '100%', padding: '12px 44px 12px 16px', ...glass,
                   color: C.text, fontSize: 15, outline: 'none',
                   background: 'rgba(255,255,255,0.05)'
                 }}
               />
-              <button onClick={() => setShowPass(s => !s)} style={{
+              <button type="button" onClick={() => setShowPass(s => !s)} style={{
                 position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
                 background: 'none', border: 'none', color: C.muted, cursor: 'pointer'
               }}>
@@ -272,23 +428,36 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
             </div>
           </div>
 
-          <button onClick={onLogin} style={{
+          <button type="submit" style={{
             background: `linear-gradient(135deg, ${C.blue}, #1d4ed8)`,
             border: 'none', borderRadius: 10, color: '#fff',
             padding: '14px 24px', fontSize: 16, fontWeight: 600, cursor: 'pointer',
-            marginTop: 4
+            marginTop: 8, boxShadow: `0 4px 14px ${C.blue}40`
           }}>
             Iniciar sesión
           </button>
-        </div>
+        </form>
       </div>
 
       <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         background: 'rgba(13,27,58,0.4)', borderLeft: `1px solid ${C.border}`,
         padding: 60, position: 'relative', overflow: 'hidden'
       }}>
-        <svg width="420" height="420" viewBox="0 0 420 420" fill="none">
+        <div style={{ textAlign: 'center', zIndex: 2, maxWidth: 440 }}>
+          <div style={{
+            width: 80, height: 80, background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
+            borderRadius: 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: 20, boxShadow: `0 8px 30px ${C.blue}50`
+          }}>
+            <Zap size={40} color="#fff" />
+          </div>
+          <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 10px' }}>Red Energética Inteligente VPP</h2>
+          <p style={{ color: C.muted, fontSize: 14, lineHeight: 1.6 }}>
+            Gestión interconectada en tiempo real entre los residentes y la administración solar comunitaria.
+          </p>
+        </div>
+        <svg width="420" height="420" viewBox="0 0 420 420" fill="none" style={{ position: 'absolute', opacity: 0.4 }}>
           <circle cx="210" cy="210" r="140" fill={`${C.amber}10`} stroke={`${C.amber}40`} strokeWidth="1.5" />
           <circle cx="210" cy="210" r="70" fill={`${C.blue}20`} stroke={C.blue} strokeWidth="2" />
         </svg>
@@ -297,7 +466,7 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
   )
 }
 
-// ─── Energy Flow Diagram (con energía eólica) ──────────────────────────────
+// ─── Energy Flow Diagram (FULL ANIMATED GRAPHIC DIAGRAM) ────────────────────
 function EnergyFlowDiagram({
   viviendas,
   paneles,
@@ -316,8 +485,8 @@ function EnergyFlowDiagram({
   onSelectLine: (info: string) => void
   onAddEolica: (viviendaId: number, potencia: number) => void
   onAssignEnergy?: (panelId: string, kwh: number, viviendaId: number) => void
-  requests?: any[],
-  setRequests?: (r: any[]) => void,
+  requests?: EnergyRequest[]
+  setRequests?: React.Dispatch<React.SetStateAction<EnergyRequest[]>>
 }) {
   const [selected, setSelected] = useState<number | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -329,14 +498,11 @@ function EnergyFlowDiagram({
   const [eolicaViviendaId, setEolicaViviendaId] = useState<number | null>(null)
   const [eolicaPotenciaInput, setEolicaPotenciaInput] = useState('5.0')
 
-  // Solicitudes recibidas se pasan desde el padre (MainApp)
-  // const [requests, setRequests] = useState<any[]>(solicitudes)
   const [showCreateRequestModal, setShowCreateRequestModal] = useState(false)
   const [showRequestsModal, setShowRequestsModal] = useState(false)
   const [requestKwh, setRequestKwh] = useState('2.0')
   const [requestPrice, setRequestPrice] = useState('0.25')
   const [requestMotivo, setRequestMotivo] = useState('')
-  
 
   // Form State for Add Vivienda + Panel
   const [newNombre, setNewNombre] = useState('')
@@ -344,6 +510,8 @@ function EnergyFlowDiagram({
   const [newPotencia, setNewPotencia] = useState('4.8')
   const [newBateria, setNewBateria] = useState('80')
   const [newEstado, setNewEstado] = useState<'normal' | 'elevado' | 'critico'>('normal')
+
+  const reqList = requests || []
 
   const N = viviendas.length
   const countAbove = Math.floor(N / 2)
@@ -393,7 +561,6 @@ function EnergyFlowDiagram({
     setActionMessage(msg)
     setTimeout(() => setActionMessage(null), 4000)
   }
-
 
   const handleConfirmEolica = () => {
     if (eolicaViviendaId === null) return
@@ -503,7 +670,6 @@ function EnergyFlowDiagram({
 
             const tieneEolica = v.tieneEolica && v.eolicaPotencia && v.eolicaPotencia > 0
             const spinSpeed = Math.max(1.2, 4 - (v.eolicaPotencia || 0) * 0.25)
-            // Place turbine to the side opposite the panel to avoid sitting between house and panel
             const eolicOffset = 72
             const eolicSide = (xPanel > xHouse) ? -eolicOffset : eolicOffset
             const eolicX = xHouse + eolicSide
@@ -594,54 +760,45 @@ function EnergyFlowDiagram({
                 {/* ── AEROGENERADOR (si tiene eólica) ── */}
                 {tieneEolica && (
                   <>
-                    {/* Soft connectors from turbine to house and panel to indicate electrical link */}
                     <line x1={eolicX} y1={itemY - 26} x2={xHouse} y2={itemY - 6} stroke="rgba(148,163,184,0.25)" strokeWidth="1" />
                     <line x1={eolicX} y1={itemY - 26} x2={xPanel} y2={itemY - 16} stroke="rgba(99,102,241,0.12)" strokeWidth="1" />
-                  
-                  <g transform={`translate(${eolicX}, ${itemY - 40})`} filter={`url(#dropShadow${v.id})`}>
-                    {/* Torre */}
-                    {/* Torre with subtle gradient */}
-                    <defs>
-                      <linearGradient id={`towerGrad${v.id}`} x1="0" x2="0">
-                        <stop offset="0%" stopColor="#f8fafc" stopOpacity="0.06" />
-                        <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.2" />
-                      </linearGradient>
-                      <radialGradient id={`bladeGrad${v.id}`} cx="30%" cy="30%">
-                        <stop offset="0%" stopColor="#06b6d4" stopOpacity="1" />
-                        <stop offset="100%" stopColor="#06b6d480" stopOpacity="0.6" />
-                      </radialGradient>
-                      <filter id={`dropShadow${v.id}`} x="-50%" y="-50%" width="200%" height="200%">
-                        <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.35" />
-                      </filter>
-                    </defs>
-                    <rect x={-2} y={0} width={4} height={28} rx={2} fill={`url(#towerGrad${v.id})`} stroke="#94a3b8" strokeWidth="0.8" />
-                    {/* Nacelle */}
-                    <rect x={-8} y={-6} width={16} height={8} rx={3} fill="#0f172a" stroke="#60a5fa" strokeWidth="0.8" />
-                    {/* Turbina (aspas giratorias) - velocidad proporcional a potencia */}
-                    <g style={{ transformOrigin: '0px 0px', animation: `spin ${spinSpeed}s cubic-bezier(0.33,0,0.67,1) infinite` }}>
-                      <path d="M0,-1 C6,-1 10,-6 12,-8" stroke={`url(#bladeGrad${v.id})`} strokeWidth="2.6" strokeLinecap="round" fill="none" transform="rotate(0)" />
-                      <path d="M0,-1 C-6,-1 -10,-6 -12,-8" stroke={`url(#bladeGrad${v.id})`} strokeWidth="2.6" strokeLinecap="round" fill="none" transform="rotate(120)" />
-                      <path d="M0,-1 C6,-1 10,-6 12,-8" stroke={`url(#bladeGrad${v.id})`} strokeWidth="2.6" strokeLinecap="round" fill="none" transform="rotate(240)" />
-                    </g>
-                    {/* Núcleo con leve halo */}
-                    <circle cx="0" cy="0" r="3.5" fill="#0ea5a3" stroke="#06b6d4" strokeWidth="0.8" opacity="0.98" />
-                    <circle cx="0" cy="0" r="6" fill="#06b6d410" />
-                    {/* Potencia debajo */}
-                    <text x="0" y="34" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="700">
-                      {v.eolicaPotencia} kW
-                    </text>
+
+                    <g transform={`translate(${eolicX}, ${itemY - 40})`} filter={`url(#dropShadow${v.id})`}>
+                      <defs>
+                        <linearGradient id={`towerGrad${v.id}`} x1="0" x2="0">
+                          <stop offset="0%" stopColor="#f8fafc" stopOpacity="0.06" />
+                          <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.2" />
+                        </linearGradient>
+                        <radialGradient id={`bladeGrad${v.id}`} cx="30%" cy="30%">
+                          <stop offset="0%" stopColor="#06b6d4" stopOpacity="1" />
+                          <stop offset="100%" stopColor="#06b6d480" stopOpacity="0.6" />
+                        </radialGradient>
+                        <filter id={`dropShadow${v.id}`} x="-50%" y="-50%" width="200%" height="200%">
+                          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000" floodOpacity="0.35" />
+                        </filter>
+                      </defs>
+                      <rect x={-2} y={0} width={4} height={28} rx={2} fill={`url(#towerGrad${v.id})`} stroke="#94a3b8" strokeWidth="0.8" />
+                      <rect x={-8} y={-6} width={16} height={8} rx={3} fill="#0f172a" stroke="#60a5fa" strokeWidth="0.8" />
+                      <g style={{ transformOrigin: '0px 0px', animation: `spin ${spinSpeed}s cubic-bezier(0.33,0,0.67,1) infinite` }}>
+                        <path d="M0,-1 C6,-1 10,-6 12,-8" stroke={`url(#bladeGrad${v.id})`} strokeWidth="2.6" strokeLinecap="round" fill="none" transform="rotate(0)" />
+                        <path d="M0,-1 C-6,-1 -10,-6 -12,-8" stroke={`url(#bladeGrad${v.id})`} strokeWidth="2.6" strokeLinecap="round" fill="none" transform="rotate(120)" />
+                        <path d="M0,-1 C6,-1 10,-6 12,-8" stroke={`url(#bladeGrad${v.id})`} strokeWidth="2.6" strokeLinecap="round" fill="none" transform="rotate(240)" />
+                      </g>
+                      <circle cx="0" cy="0" r="3.5" fill="#0ea5a3" stroke="#06b6d4" strokeWidth="0.8" opacity="0.98" />
+                      <circle cx="0" cy="0" r="6" fill="#06b6d410" />
+                      <text x="0" y="34" textAnchor="middle" fill="#60A5FA" fontSize="9" fontWeight="700">
+                        {v.eolicaPotencia} kW
+                      </text>
                     </g>
                   </>
                 )}
 
                 {/* ── RIGHT: PANEL SOLAR ── */}
                 <g style={{ cursor: 'pointer' }} onClick={() => handleLineClick(i)}>
-                  {/* Panel Title */}
                   <text x={xPanel} y={itemY - 24} textAnchor="middle" fill={C.text} fontSize="11" fontWeight="700" letterSpacing="0.04em">
                     {p.nombre.toUpperCase()}
                   </text>
 
-                  {/* Panel Grid Box */}
                   <rect
                     x={xPanel - 32} y={itemY - 18} width="64" height="40" rx="5"
                     fill="rgba(13,27,58,0.85)" stroke={isSelected ? C.blueLight : 'rgba(59,130,246,0.5)'}
@@ -672,7 +829,6 @@ function EnergyFlowDiagram({
                     )}
                   </g>
 
-                  {/* kW Power Text */}
                   <text x={xPanel} y={itemY + 58} textAnchor="middle" fill={color} fontSize="11" fontWeight="700">
                     {p.potencia} kW
                   </text>
@@ -719,8 +875,6 @@ function EnergyFlowDiagram({
 
       {/* ── BOTTOM ACTION BUTTONS ── */}
       <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
-        {/* Redistribuir energía removed per user request */}
-
         <button
           onClick={() => setShowRequestsModal(true)}
           style={{
@@ -730,7 +884,7 @@ function EnergyFlowDiagram({
             boxShadow: '0 2px 10px rgba(34,197,94,0.3)'
           }}
         >
-          <FileText size={15} /> Solicitudes
+          <FileText size={15} /> Solicitudes ({reqList.filter(r => r.estado === 'pendiente').length})
         </button>
 
         <button
@@ -930,35 +1084,35 @@ function EnergyFlowDiagram({
         </Modal>
       )}
 
-      {/* Redistribute modal removed per user request */}
-
-      
       {/* ── MODAL: CREAR SOLICITUD DE ENERGÍA (DESDE VIVIENDA) ── */}
       {showCreateRequestModal && selected !== null && viviendas[selected] && (
         <Modal title="✉️ Solicitar Energía" onClose={() => setShowCreateRequestModal(false)}>
           <form style={{ display: 'flex', flexDirection: 'column', gap: 12 }} onSubmit={(e) => {
             e.preventDefault()
-            const kwh = parseFloat(requestKwh)
+            const kwhVal = parseFloat(requestKwh)
             const price = parseFloat(requestPrice)
-            if (isNaN(kwh) || kwh <= 0) return alert('Ingresa kWh válido')
-            const nueva = {
+            if (isNaN(kwhVal) || kwhVal <= 0) return alert('Ingresa kWh válido')
+            const nueva: EnergyRequest = {
               id: Date.now(),
               vivienda: viviendas[selected].nombre,
               viviendaId: viviendas[selected].id,
-              fecha: new Date().toLocaleDateString(),
-              hora: new Date().toLocaleTimeString(),
-              energia: kwh,
+              fecha: new Date().toISOString().split('T')[0],
+              hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              energia: kwhVal,
               consumoActual: viviendas[selected].consumo,
               motivo: requestMotivo || 'Solicitud de carga',
+              prioridad: 'normal',
               estado: 'pendiente',
               costo: price,
             }
-            setRequests(prev => [nueva, ...prev])
+            if (setRequests) {
+              setRequests(prev => [nueva, ...prev])
+            }
             setShowCreateRequestModal(false)
             setRequestKwh('2.0')
             setRequestPrice('0.25')
             setRequestMotivo('')
-            triggerToast(`🔔 Solicitud registrada: ${kwh} kWh para ${nueva.vivienda}`)
+            triggerToast(`🔔 Solicitud registrada: ${kwhVal} kWh para ${nueva.vivienda}`)
           }}>
             <div>
               <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Cantidad (kWh)</label>
@@ -973,8 +1127,8 @@ function EnergyFlowDiagram({
               <input value={requestMotivo} onChange={e => setRequestMotivo(e.target.value)} placeholder="ej. Recarga VE" style={{ width: '100%', padding: '11px 14px', ...glass, color: C.text }} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="submit" style={{ flex: 1, background: C.green, border: 'none', color: '#fff', borderRadius: 8, padding: '10px', fontWeight: 700 }}>Enviar solicitud</button>
-              <button type="button" onClick={() => setShowCreateRequestModal(false)} style={{ flex: '0 0 auto', background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`, color: C.muted, borderRadius: 8, padding: '10px' }}>Cancelar</button>
+              <button type="submit" style={{ flex: 1, background: C.green, border: 'none', color: '#fff', borderRadius: 8, padding: '10px', fontWeight: 700, cursor: 'pointer' }}>Enviar solicitud</button>
+              <button type="button" onClick={() => setShowCreateRequestModal(false)} style={{ flex: '0 0 auto', background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`, color: C.muted, borderRadius: 8, padding: '10px', cursor: 'pointer' }}>Cancelar</button>
             </div>
           </form>
         </Modal>
@@ -984,8 +1138,8 @@ function EnergyFlowDiagram({
       {showRequestsModal && (
         <Modal title="📋 Gestión de Solicitudes" onClose={() => setShowRequestsModal(false)} maxWidth={900}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 420, overflowY: 'auto' }}>
-            {requests.length === 0 && <div style={{ color: C.dim, padding: 12 }}>No hay solicitudes.</div>}
-            {requests.map(r => (
+            {reqList.length === 0 && <div style={{ color: C.dim, padding: 12 }}>No hay solicitudes.</div>}
+            {reqList.map(r => (
               <div key={r.id} style={{ padding: 12, border: `1px solid ${C.border}`, borderRadius: 8, background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: 700, color: C.text }}>{r.vivienda} · {r.energia} kWh · ${r.costo}/kWh</div>
@@ -993,15 +1147,20 @@ function EnergyFlowDiagram({
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {r.estado === 'pendiente' ? (
-                    <AssignRow r={r} paneles={paneles} onAssign={(panelId: string, kwh: number) => {
-                      const k = parseFloat(kwh as any)
+                    <AssignRow r={r} paneles={paneles} onAssign={(panelId: string, kwhVal: number) => {
+                      const k = parseFloat(kwhVal as any)
                       const panel = paneles.find(p => p.id === panelId)
                       if (!panel) return alert('Panel no válido')
                       if (k <= 0) return alert('kWh inválido')
                       if (panel.disponible < k) return alert('Panel no tiene suficiente disponible')
-                      // Actualiza panel y vivienda via callback al padre
-                      onAssignEnergy && onAssignEnergy(panelId, k, r.viviendaId)
-                      setRequests(prev => prev.map(x => x.id === r.id ? { ...x, estado: 'aprobada', asignado: panelId, asignadoKwh: k } : x))
+                      
+                      const targetId = r.viviendaId || viviendas.find(v => v.nombre === r.vivienda)?.id || 1
+                      if (onAssignEnergy) {
+                        onAssignEnergy(panelId, k, targetId)
+                      }
+                      if (setRequests) {
+                        setRequests(prev => prev.map(x => x.id === r.id ? { ...x, estado: 'aprobada', asignado: `Panel ${panelId}`, asignadoKwh: k } : x))
+                      }
                       triggerToast(`✅ ${k} kWh asignados desde ${panel.nombre} a ${r.vivienda}`)
                     }} />
                   ) : (
@@ -1077,7 +1236,7 @@ function EnergyFlowDiagram({
         </Modal>
       )}
 
-      {/* Incluir keyframes para animación de aspas */}
+      {/* Incluir keyframes para animación de aspas, pulso y rayos */}
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
@@ -1115,17 +1274,16 @@ function Dashboard({
   onDeleteViviendaPanel: (id: number) => void
   onAddEolica: (viviendaId: number, potencia: number) => void
   onAssignEnergy?: (panelId: string, kwh: number, viviendaId: number) => void
-  requests?: any[]
-  setRequests?: (r: any[]) => void
+  requests?: EnergyRequest[]
+  setRequests?: React.Dispatch<React.SetStateAction<EnergyRequest[]>>
 }) {
-  const [flowInfo, setFlowInfo] = useState<string | null>(null)
-
   const totalGenerado = paneles.reduce((acc, p) => acc + p.generado, 0).toFixed(1)
   const totalConsumido = viviendas.reduce((acc, v) => acc + v.consumo * 8, 0).toFixed(1)
   const totalDisponible = paneles.reduce((acc, p) => acc + p.disponible, 0).toFixed(1)
   const viviendasOnline = viviendas.filter(v => v.online).length
   const panelesActivos = paneles.filter(p => p.estado === 'activo').length
   const sensoresOk = viviendas.filter(v => v.sensor).length
+  const pendientes = requests ? requests.filter(r => r.estado === 'pendiente').length : 0
 
   const kpis = [
     { icon: <Sun size={18} />, label: 'Generado hoy', value: `${totalGenerado} kWh`, sub: '↑ 12% vs ayer', color: C.amber },
@@ -1133,9 +1291,9 @@ function Dashboard({
     { icon: <Battery size={18} />, label: 'Disponible', value: `${totalDisponible} kWh`, sub: 'Excedente de red', color: C.green },
     { icon: <Home size={18} />, label: 'Viviendas online', value: `${viviendasOnline} / ${viviendas.length}`, sub: 'Conectadas', color: C.green },
     { icon: <Sun size={18} />, label: 'Paneles activos', value: `${panelesActivos} / ${paneles.length}`, sub: 'Red solar', color: C.amber },
-    { icon: <FileText size={18} />, label: 'Solicitudes pendientes', value: '2', sub: 'Requieren atención', color: C.amber },
-    { icon: <AlertTriangle size={18} />, label: 'Alertas activas', value: '3', sub: 'Ver notificaciones', color: C.red },
-    { icon: <Wifi size={18} />, label: 'Sensores conectados', value: `${sensoresOk} / ${viviendas.length}`, sub: 'Frecuencia 3s', color: C.green },
+    { icon: <FileText size={18} />, label: 'Solicitudes pendientes', value: `${pendientes}`, sub: 'Peticiones de usuarios', color: C.amber },
+    { icon: <AlertTriangle size={18} />, label: 'Alertas activas', value: '2', sub: 'Ver notificaciones', color: C.red },
+    { icon: <Activity size={18} />, label: 'Sensores conectados', value: `${sensoresOk} / ${viviendas.length}`, sub: 'Frecuencia 3s', color: C.green },
   ]
 
   const consumoBarData = Array.from({ length: 8 }, (_, i) => {
@@ -1143,7 +1301,7 @@ function Dashboard({
     const entry: any = { hora }
     viviendas.forEach(v => {
       const shortName = v.nombre.replace('Casa ', '')
-      entry[shortName] = parseFloat((v.consumo * (0.8 + Math.random() * 0.4)).toFixed(1))
+      entry[shortName] = parseFloat((v.consumo * (0.8 + (i % 3) * 0.2)).toFixed(1))
     })
     return entry
   })
@@ -1152,299 +1310,34 @@ function Dashboard({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* KPI cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
         {kpis.map(k => <StatCard key={k.label} {...k} />)}
       </div>
 
-      {/* Energy Flow Animation Diagram */}
       <EnergyFlowDiagram
         viviendas={viviendas}
         paneles={paneles}
         onAddViviendaPanel={onAddViviendaPanel}
         onDeleteViviendaPanel={onDeleteViviendaPanel}
-        onSelectLine={setFlowInfo}
+        onSelectLine={() => {}}
         onAssignEnergy={onAssignEnergy}
         onAddEolica={onAddEolica}
         requests={requests}
         setRequests={setRequests}
       />
 
-      {flowInfo && (
-        <div style={{
-          padding: '10px 16px', background: `${C.blue}15`, border: `1px solid ${C.blue}40`,
-          borderRadius: 8, fontSize: 13, color: C.blueLight
-        }}>
-          ⚡ Línea seleccionada: {flowInfo} — Operando normalmente.
-        </div>
-      )}
-
-      {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        <div style={{ ...glass, padding: 20 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: C.text }}>
-            Generación y Consumo — últimas 24h
-          </h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={genHours} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="genGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={C.amber} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={C.amber} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="consGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={C.blue} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={C.blue} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="hora" tick={{ fill: C.dim, fontSize: 9 }} interval={4} />
-              <YAxis tick={{ fill: C.dim, fontSize: 9 }} />
-              <Tooltip contentStyle={customTooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Area type="monotone" dataKey="generado" stroke={C.amber} fill="url(#genGrad)" strokeWidth={2} name="Generado (kWh)" dot={false} />
-              <Area type="monotone" dataKey="consumido" stroke={C.blue} fill="url(#consGrad)" strokeWidth={2} name="Consumido (kWh)" dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div style={{ ...glass, padding: 20 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: C.text }}>
-            Consumo por Vivienda — últimas 24h
-          </h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={consumoBarData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="hora" tick={{ fill: C.dim, fontSize: 9 }} />
-              <YAxis tick={{ fill: C.dim, fontSize: 9 }} />
-              <Tooltip contentStyle={customTooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              {viviendas.map((v, idx) => {
-                const shortName = v.nombre.replace('Casa ', '')
-                return (
-                  <Bar
-                    key={v.id}
-                    dataKey={shortName}
-                    stackId="a"
-                    fill={colorsList[idx % colorsList.length]}
-                  />
-                )
-              })}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Viviendas Screen ───────────────────────────────────────────────────────
-function Viviendas({
-  viviendas,
-  onAddViviendaPanel,
-  onDeleteViviendaPanel,
-  setViviendas,
-}: {
-  viviendas: ViviendaItem[]
-  onAddViviendaPanel: (data: any) => void
-  onDeleteViviendaPanel: (id: number) => void
-  setViviendas: React.Dispatch<React.SetStateAction<ViviendaItem[]>>
-}) {
-  const [sliders, setSliders] = useState<Record<number, number>>({})
-  const [modal, setModal] = useState<number | null>(null)
-  const [adjustModal, setAdjustModal] = useState<number | null>(null)
-  const [adjVal, setAdjVal] = useState('1.0')
-
-  const getSliderVal = (id: number, def: number) => sliders[id] ?? def
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Gestión de Viviendas</h2>
-          <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Control de suministro e integración de paneles</p>
-        </div>
-        <button
-          onClick={() => {
-            const count = viviendas.length + 1
-            onAddViviendaPanel({
-              nombre: `Casa Nueva ${count}`,
-              consumo: 3.8,
-              potencia: 4.8,
-              bateria: 85,
-              estado: 'normal',
-            })
-          }}
-          style={{
-            background: `linear-gradient(135deg, ${C.purple}, ${C.blue})`,
-            border: 'none', color: '#fff', borderRadius: 10, padding: '10px 20px',
-            fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
-          }}
-        >
-          <Plus size={16} /> Agregar Vivienda y Panel
-        </button>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
-        {viviendas.map((v) => {
-          const borderColor = v.estado === 'normal' ? C.green : v.estado === 'elevado' ? C.amber : C.red
-          const currentLimit = getSliderVal(v.id, v.limite)
-
-          return (
-            <div key={v.id} style={{
-              ...glass,
-              border: `1px solid ${borderColor}40`,
-              padding: 22,
-              boxShadow: `0 0 20px ${borderColor}08`
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: C.text }}>{v.nombre}</div>
-                  <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>Panel asignado: <span style={{ color: C.blueLight }}>{v.panel}</span></div>
-                  {v.tieneEolica && (
-                    <div style={{ color: C.purple, fontSize: 12, marginTop: 2 }}>
-                      💨 Energía eólica: {v.eolicaPotencia} kW
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Badge estado={v.estado} />
-                  <button
-                    onClick={() => onDeleteViviendaPanel(v.id)}
-                    title="Eliminar vivienda y panel"
-                    style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', padding: 4 }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                {[
-                  { label: 'Consumo actual', value: `${v.consumo} kW`, color: C.text },
-                  { label: 'Disponible', value: `${v.disponible} kWh`, color: C.green },
-                  { label: 'Batería', value: `${v.bateria}%`, color: v.bateria > 50 ? C.green : v.bateria > 20 ? C.amber : C.red },
-                  { label: 'Extra asignado', value: `${v.extraAsignado} kWh`, color: C.amber },
-                ].map(s => (
-                  <div key={s.label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{s.label}</div>
-                    <div style={{ fontWeight: 700, color: s.color, fontSize: 16 }}>{s.value}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', gap: 14, marginBottom: 16, fontSize: 12 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {v.sensor
-                    ? <Wifi size={13} color={C.green} />
-                    : <WifiOff size={13} color={C.red} />}
-                  <span style={{ color: v.sensor ? C.green : C.red }}>Sensor {v.sensor ? 'OK' : 'Offline'}</span>
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: v.online ? C.green : C.red }} />
-                  <span style={{ color: v.online ? C.green : C.red }}>{v.online ? 'Online' : 'Offline'}</span>
-                </span>
-              </div>
-
-              <div style={{
-                borderTop: `1px solid ${C.border}`, paddingTop: 16,
-                border: `1px solid ${C.borderBright}`,
-                borderRadius: 8, padding: 14, background: 'rgba(37,99,235,0.04)',
-                marginTop: 4
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 12, color: C.blueLight }}>
-                  <Settings size={13} /> Controles de administrador
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.muted, marginBottom: 6 }}>
-                    <span>Límite de suministro</span>
-                    <span style={{ color: C.text, fontWeight: 600 }}>{currentLimit.toFixed(1)} kW</span>
-                  </div>
-                  <input
-                    type="range" min="1" max="12" step="0.5"
-                    value={currentLimit}
-                    onChange={e => setSliders(s => ({ ...s, [v.id]: parseFloat(e.target.value) }))}
-                    style={{ width: '100%', accentColor: C.blue, cursor: 'pointer' }}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => setAdjustModal(v.id)}
-                    style={{ flex: 1, background: `${C.blue}20`, border: `1px solid ${C.blue}40`, color: C.blueLight, borderRadius: 7, padding: '8px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    ⚡ Ajustar suministro
-                  </button>
-                  <button
-                    onClick={() => setModal(v.id)}
-                    style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`, color: C.text, borderRadius: 7, padding: '8px 12px', fontSize: 12, cursor: 'pointer' }}
-                  >
-                    Ver detalles
-                  </button>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {adjustModal !== null && (
-        <Modal title={`Ajustar suministro`} onClose={() => setAdjustModal(null)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div>
-              <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Cantidad adicional (kWh)</label>
-              <input type="number" value={adjVal} onChange={e => setAdjVal(e.target.value)}
-                style={{ width: '100%', padding: '11px 14px', ...glass, color: C.text, fontSize: 15, outline: 'none', background: 'rgba(255,255,255,0.05)' }} />
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-              <button onClick={() => setAdjustModal(null)} style={{ flex: 1, background: `${C.green}20`, border: `1px solid ${C.green}40`, color: C.green, borderRadius: 8, padding: '12px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                Confirmar cambio
-              </button>
-              <button onClick={() => setAdjustModal(null)} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`, color: C.muted, borderRadius: 8, padding: '12px', fontSize: 14, cursor: 'pointer' }}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {modal !== null && viviendas.find(v => v.id === modal) && (
-        <Modal title={`Detalle — ${viviendas.find(v => v.id === modal)?.nombre}`} onClose={() => setModal(null)}>
-          <DetalleViviendaContent v={viviendas.find(v => v.id === modal)!} />
-        </Modal>
-      )}
-    </div>
-  )
-}
-
-function DetalleViviendaContent({ v }: { v: ViviendaItem }) {
-  const weekData = Array.from({ length: 7 }, (_, i) => ({
-    dia: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][i],
-    consumo: v.consumo * 12 + Math.random() * 10 - 5
-  }))
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-        {[
-          { l: 'Promedio', v: `${v.consumo} kW` },
-          { l: 'Máximo', v: `${(v.consumo * 1.4).toFixed(1)} kW` },
-          { l: 'Mínimo', v: `${(v.consumo * 0.4).toFixed(1)} kW` },
-        ].map(s => (
-          <div key={s.l} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: C.muted }}>{s.l}</div>
-            <div style={{ fontWeight: 700, fontSize: 16 }}>{s.v}</div>
-          </div>
-        ))}
-      </div>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Consumo últimos 7 días</div>
-        <ResponsiveContainer width="100%" height={140}>
-          <BarChart data={weekData} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
+      <div style={{ ...glass, padding: 20 }}>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700 }}>Consumo Energético por Vivienda (24 Horas)</h3>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={consumoBarData}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="dia" tick={{ fill: C.dim, fontSize: 10 }} />
-            <YAxis tick={{ fill: C.dim, fontSize: 10 }} />
+            <XAxis dataKey="hora" tick={{ fill: C.dim, fontSize: 11 }} />
+            <YAxis tick={{ fill: C.dim, fontSize: 11 }} />
             <Tooltip contentStyle={customTooltipStyle} />
-            <Bar dataKey="consumo" fill={C.blue} radius={[4, 4, 0, 0]} name="Consumo (kWh)" />
+            {viviendas.map((v, idx) => {
+              const shortName = v.nombre.replace('Casa ', '')
+              return <Bar key={v.id} dataKey={shortName} fill={colorsList[idx % colorsList.length]} radius={[4, 4, 0, 0]} />
+            })}
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -1452,126 +1345,254 @@ function DetalleViviendaContent({ v }: { v: ViviendaItem }) {
   )
 }
 
-// ─── Paneles Solares Screen ─────────────────────────────────────────────────
-function PanelesSolares({
-  paneles,
+// ─── Viviendas ──────────────────────────────────────────────────────────────
+function DetalleViviendaContent({ v }: { v: ViviendaItem }) {
+  const areaData = Array.from({ length: 12 }, (_, i) => ({
+    time: `${i * 2}:00`,
+    consumo: parseFloat((v.consumo * (0.7 + Math.sin(i) * 0.3)).toFixed(1)),
+    bateria: Math.min(100, Math.max(10, Math.round(v.bateria + Math.cos(i) * 15))),
+  }))
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <div style={{ ...glass, padding: 14 }}>
+          <div style={{ fontSize: 11, color: C.muted }}>Consumo Actual</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: C.text }}>{v.consumo} kW</div>
+        </div>
+        <div style={{ ...glass, padding: 14 }}>
+          <div style={{ fontSize: 11, color: C.muted }}>Disponible Red</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: C.green }}>{v.disponible} kWh</div>
+        </div>
+        <div style={{ ...glass, padding: 14 }}>
+          <div style={{ fontSize: 11, color: C.muted }}>Nivel Batería</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: v.bateria < 20 ? C.red : C.amber }}>{v.bateria}%</div>
+        </div>
+      </div>
+
+      <div style={{ ...glass, padding: 16 }}>
+        <h4 style={{ margin: '0 0 12px', fontSize: 13, color: C.muted }}>Historial de Consumo y Batería</h4>
+        <ResponsiveContainer width="100%" height={180}>
+          <AreaChart data={areaData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <XAxis dataKey="time" tick={{ fill: C.dim, fontSize: 10 }} />
+            <YAxis tick={{ fill: C.dim, fontSize: 10 }} />
+            <Tooltip contentStyle={customTooltipStyle} />
+            <Area type="monotone" dataKey="consumo" stroke={C.blue} fill={`${C.blue}30`} name="Consumo (kW)" />
+            <Area type="monotone" dataKey="bateria" stroke={C.green} fill={`${C.green}20`} name="Batería (%)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+function Viviendas({
   viviendas,
+  onAddViviendaPanel,
+  onDeleteViviendaPanel,
 }: {
-  paneles: PanelItem[]
   viviendas: ViviendaItem[]
+  onAddViviendaPanel: (data: any) => void
+  onDeleteViviendaPanel: (id: number) => void
 }) {
+  const [selectedVivienda, setSelectedVivienda] = useState<ViviendaItem | null>(null)
+  const [showAdd, setShowAdd] = useState(false)
+  const [nombre, setNombre] = useState('')
+  const [consumo, setConsumo] = useState('3.5')
+  const [potencia, setPotencia] = useState('4.0')
+  const [bateria, setBateria] = useState('85')
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Paneles Solares</h2>
-          <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Monitoreo y asignación directa por vivienda</p>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Gestión de Viviendas</h2>
+          <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Residencias conectadas a la red solar comunitaria</p>
         </div>
-        {/* Redistribuir button removed per user request */}
+        <button
+          onClick={() => setShowAdd(true)}
+          style={{ background: C.blue, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer' }}
+        >
+          + Registrar Nueva Vivienda
+        </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 20 }}>
-        {paneles.map(p => {
-          const bc = p.estado === 'activo' ? C.green : p.estado === 'mantenimiento' ? C.amber : C.red
-          return (
-            <div key={p.id} style={{ ...glass, border: `1px solid ${bc}25`, padding: 22 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: C.text }}>{p.nombre}</div>
-                  <div style={{ color: C.muted, fontSize: 12 }}>Asignado a: <span style={{ color: C.blueLight }}>{p.asignadoA}</span></div>
-                </div>
-                <Badge estado={p.estado} />
-              </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+        {viviendas.map(v => (
+          <div key={v.id} style={{ ...glass, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, fontSize: 16 }}>{v.nombre}</span>
+              <Badge estado={v.estado} />
+            </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                {[
-                  { l: 'Generado hoy', v: `${p.generado} kWh`, c: C.amber },
-                  { l: 'Potencia actual', v: `${p.potencia} kW`, c: C.blue },
-                  { l: 'Temperatura', v: `${p.temp}°C`, c: p.temp > 50 ? C.red : C.text },
-                  { l: 'Radiación', v: `${p.radiacion} W/m²`, c: C.text },
-                ].map(s => (
-                  <div key={s.l} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>{s.l}</div>
-                    <div style={{ fontWeight: 700, color: s.c, fontSize: 16 }}>{s.v}</div>
-                  </div>
-                ))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
+              <div>
+                <span style={{ color: C.muted }}>Panel solar:</span>
+                <div style={{ fontWeight: 600, color: C.blueLight }}>{v.panel}</div>
               </div>
-
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.muted, marginBottom: 6 }}>
-                  <span>Utilización</span>
-                  <span style={{ color: C.text, fontWeight: 600 }}>{p.utilizacion}%</span>
-                </div>
-                <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3 }}>
-                  <div style={{ height: '100%', width: `${p.utilizacion}%`, background: `linear-gradient(90deg, ${C.blue}, ${C.green})`, borderRadius: 3 }} />
-                </div>
+              <div>
+                <span style={{ color: C.muted }}>Consumo actual:</span>
+                <div style={{ fontWeight: 600 }}>{v.consumo} kW</div>
               </div>
-
-              <div style={{ borderRadius: 8, padding: 14, background: 'rgba(37,99,235,0.04)', border: `1px solid ${C.borderBright}` }}>
-                <div style={{ fontSize: 12, color: C.blueLight, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Settings size={13} /> Control de asignación
-                </div>
-                <select style={{ width: '100%', padding: '9px 12px', ...glass, color: C.text, fontSize: 13, outline: 'none', background: 'rgba(13,27,58,0.9)' }} defaultValue={p.asignadoA}>
-                  {viviendas.map(v => <option key={v.id}>{v.nombre}</option>)}
-                </select>
+              <div>
+                <span style={{ color: C.muted }}>Disponible:</span>
+                <div style={{ fontWeight: 600, color: C.green }}>{v.disponible} kWh</div>
+              </div>
+              <div>
+                <span style={{ color: C.muted }}>Batería:</span>
+                <div style={{ fontWeight: 600, color: v.bateria < 20 ? C.red : C.amber }}>{v.bateria}%</div>
               </div>
             </div>
-          )
-        })}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+              <button
+                onClick={() => setSelectedVivienda(v)}
+                style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: `1px solid ${C.border}`, color: C.text, padding: 8, borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Ver Detalles
+              </button>
+              {viviendas.length > 1 && (
+                <button
+                  onClick={() => onDeleteViviendaPanel(v.id)}
+                  style={{ background: 'rgba(239,68,68,0.12)', border: `1px solid ${C.red}40`, color: C.red, padding: '8px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Redistribute modal removed per user request */}
+      {selectedVivienda && (
+        <Modal title={`Detalles de ${selectedVivienda.nombre}`} onClose={() => setSelectedVivienda(null)} maxWidth={640}>
+          <DetalleViviendaContent v={selectedVivienda} />
+        </Modal>
+      )}
+
+      {showAdd && (
+        <Modal title="➕ Añadir Nueva Vivienda" onClose={() => setShowAdd(false)}>
+          <form onSubmit={e => {
+            e.preventDefault()
+            if (!nombre) return alert('Nombre requerido')
+            onAddViviendaPanel({
+              nombre,
+              consumo: parseFloat(consumo),
+              potencia: parseFloat(potencia),
+              bateria: parseInt(bateria, 10),
+              estado: 'normal'
+            })
+            setShowAdd(false)
+            setNombre('')
+          }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Nombre del Residente / Vivienda</label>
+              <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="ej. Casa Torres" required style={{ width: '100%', padding: '11px 14px', ...glass, color: C.text }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Consumo Estimado (kW)</label>
+                <input type="number" step="0.1" value={consumo} onChange={e => setConsumo(e.target.value)} style={{ width: '100%', padding: '11px 14px', ...glass, color: C.text }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Potencia Panel Solar (kW)</label>
+                <input type="number" step="0.1" value={potencia} onChange={e => setPotencia(e.target.value)} style={{ width: '100%', padding: '11px 14px', ...glass, color: C.text }} />
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Nivel Batería (%)</label>
+              <input type="number" value={bateria} onChange={e => setBateria(e.target.value)} style={{ width: '100%', padding: '11px 14px', ...glass, color: C.text }} />
+            </div>
+            <button type="submit" style={{ background: C.blue, color: '#fff', border: 'none', padding: 12, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>Registrar Vivienda</button>
+          </form>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+// ─── Paneles Solares ────────────────────────────────────────────────────────
+function PanelesSolares({ paneles }: { paneles: PanelItem[]; viviendas: ViviendaItem[] }) {
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Infraestructura de Paneles Solares</h2>
+        <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Estado térmico, radiación solar y potencia fotovoltaica</p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+        {paneles.map(p => (
+          <div key={p.id} style={{ ...glass, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Sun size={20} color={C.amber} />
+                <span style={{ fontWeight: 700, fontSize: 16 }}>{p.nombre}</span>
+              </div>
+              <Badge estado={p.estado} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
+              <div>
+                <span style={{ color: C.muted }}>Generación Hoy:</span>
+                <div style={{ fontWeight: 700, color: C.amber }}>{p.generado} kWh</div>
+              </div>
+              <div>
+                <span style={{ color: C.muted }}>Potencia Máx:</span>
+                <div style={{ fontWeight: 700 }}>{p.potencia} kW</div>
+              </div>
+              <div>
+                <span style={{ color: C.muted }}>Temperatura:</span>
+                <div style={{ fontWeight: 600 }}>{p.temp} °C</div>
+              </div>
+              <div>
+                <span style={{ color: C.muted }}>Radiación:</span>
+                <div style={{ fontWeight: 600 }}>{p.radiacion} W/m²</div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, color: C.muted, borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
+              Asignado a: <strong style={{ color: C.text }}>{p.asignadoA}</strong>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
 // ─── Sensores IoT ───────────────────────────────────────────────────────────
 function SensoresIoT({ viviendas }: { viviendas: ViviendaItem[] }) {
-  const [data, setData] = useState(sensores)
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setData(s => s.map(r => ({
-        ...r,
-        instantaneo: parseFloat((r.potencia + (Math.random() - 0.5) * 0.3).toFixed(2)),
-        ultima: new Date().toLocaleTimeString('es-ES'),
-      })))
-    }, 3000)
-    return () => clearInterval(id)
-  }, [])
-
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Sensores IoT</h2>
-          <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Monitoreo en tiempo real · actualiza cada 3s</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
-          <span style={{ fontSize: 13, color: C.green }}>Live</span>
-        </div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Sensores y Telemetría IoT</h2>
+        <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Lecturas de voltaje, corriente y frecuencia en tiempo real</p>
       </div>
 
-      <div style={{ ...glass, overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 800 }}>
+      <div style={{ ...glass, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-              {['Vivienda', 'Voltaje (V)', 'Corriente (A)', 'Potencia (kW)', 'Instantáneo (kW)', 'Estado', 'Última actualización'].map(h => (
+              {['Vivienda', 'Estado Conexión', 'Voltaje (V)', 'Corriente (A)', 'Potencia (kW)', 'Última Lectura'].map(h => (
                 <th key={h} style={{ padding: '14px 16px', textAlign: 'left', color: C.dim, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {viviendas.map((v, i) => (
+            {viviendas.map(v => (
               <tr key={v.id} style={{ borderBottom: `1px solid ${C.border}` }}>
                 <td style={{ padding: '14px 16px', fontWeight: 600 }}>{v.nombre}</td>
-                <td style={{ padding: '14px 16px', color: C.text }}>220.0</td>
-                <td style={{ padding: '14px 16px', color: C.text }}>{(v.consumo * 4.5).toFixed(1)}</td>
-                <td style={{ padding: '14px 16px', color: C.amber, fontWeight: 700 }}>{v.consumo}</td>
-                <td style={{ padding: '14px 16px', color: C.green, fontWeight: 700 }}>{(v.consumo * 0.98).toFixed(2)}</td>
-                <td style={{ padding: '14px 16px', color: v.sensor ? C.green : C.red }}>{v.sensor ? 'Conectado' : 'Offline'}</td>
-                <td style={{ padding: '14px 16px', color: C.dim, fontSize: 12 }}>10:42:18</td>
+                <td style={{ padding: '14px 16px' }}>
+                  <span style={{ color: v.sensor ? C.green : C.red, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: v.sensor ? C.green : C.red }} />
+                    {v.sensor ? 'En Línea' : 'Desconectado'}
+                  </span>
+                </td>
+                <td style={{ padding: '14px 16px' }}>220.4 V</td>
+                <td style={{ padding: '14px 16px' }}>{(v.consumo * 4.5).toFixed(1)} A</td>
+                <td style={{ padding: '14px 16px', color: C.blueLight, fontWeight: 700 }}>{v.consumo} kW</td>
+                <td style={{ padding: '14px 16px', color: C.muted }}>Hace 3s</td>
               </tr>
             ))}
           </tbody>
@@ -1581,24 +1602,77 @@ function SensoresIoT({ viviendas }: { viviendas: ViviendaItem[] }) {
   )
 }
 
-// ─── Solicitudes ────────────────────────────────────────────────────────────
-function Solicitudes({ viviendas, requests, setRequests }: { viviendas: ViviendaItem[]; requests?: any[]; setRequests?: (r: any[]) => void }) {
+// ─── Solicitudes (Admin View) ───────────────────────────────────────────────
+function Solicitudes({
+  paneles,
+  requests,
+  setRequests,
+  onAssignEnergy,
+}: {
+  viviendas: ViviendaItem[]
+  paneles: PanelItem[]
+  requests: EnergyRequest[]
+  setRequests: React.Dispatch<React.SetStateAction<EnergyRequest[]>>
+  onAssignEnergy?: (panelId: string, kwh: number, viviendaId: number) => void
+}) {
   const [filter, setFilter] = useState<'todas' | 'pendiente' | 'aprobada' | 'rechazada'>('todas')
   const [search, setSearch] = useState('')
+  const [selectedPanelMap, setSelectedPanelMap] = useState<Record<number, string>>({})
 
-  const data = requests && requests.length ? requests : solicitudes
-
-  const filtered = data.filter(s =>
+  const filtered = requests.filter(s =>
     (filter === 'todas' || s.estado === filter) &&
-    (s.vivienda.toLowerCase().includes(search.toLowerCase()) || search === '')
+    (s.vivienda.toLowerCase().includes(search.toLowerCase()) || s.motivo.toLowerCase().includes(search.toLowerCase()))
   )
+
+  const handleApprove = (req: EnergyRequest) => {
+    const chosenPanelId = selectedPanelMap[req.id] || paneles[0]?.id || 'A'
+    const targetViviendaId = req.viviendaId || 1
+
+    if (onAssignEnergy) {
+      onAssignEnergy(chosenPanelId, req.energia, targetViviendaId)
+    }
+
+    setRequests(prev => prev.map(r => r.id === req.id ? { ...r, estado: 'aprobada', asignado: `Panel ${chosenPanelId}`, asignadoKwh: req.energia } : r))
+  }
+
+  const handleReject = (reqId: number) => {
+    setRequests(prev => prev.map(r => r.id === reqId ? { ...r, estado: 'rechazada' } : r))
+  }
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Solicitudes de Energía</h2>
-          <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Gestión de peticiones de energía adicional</p>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Gestión de Solicitudes de Energía</h2>
+          <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Aprobación y asignación de excedentes fotovoltaicos a usuarios</p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ position: 'relative', width: 220 }}>
+            <Search size={16} color={C.muted} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar solicitud..."
+              style={{ width: '100%', padding: '8px 12px 8px 36px', ...glass, color: C.text, fontSize: 13 }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3, border: `1px solid ${C.border}` }}>
+            {(['todas', 'pendiente', 'aprobada', 'rechazada'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                style={{
+                  background: filter === f ? C.blue : 'transparent',
+                  color: filter === f ? '#fff' : C.muted,
+                  border: 'none', borderRadius: 6, padding: '6px 12px',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize'
+                }}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1606,24 +1680,364 @@ function Solicitudes({ viviendas, requests, setRequests }: { viviendas: Vivienda
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-              {['Vivienda', 'Fecha', 'Energía (kWh)', 'Motivo', 'Estado'].map(h => (
+              {['Vivienda', 'Fecha & Hora', 'Energía Solicitada', 'Motivo', 'Estado', 'Acción Administrador'].map(h => (
                 <th key={h} style={{ padding: '14px 16px', textAlign: 'left', color: C.dim, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((s) => (
-              <tr key={s.id} style={{ borderBottom: `1px solid ${C.border}` }}>
-                <td style={{ padding: '14px 16px', fontWeight: 600 }}>{s.vivienda}</td>
-                <td style={{ padding: '14px 16px', color: C.muted }}>{s.fecha}</td>
-                <td style={{ padding: '14px 16px', color: C.amber, fontWeight: 700 }}>{s.energia}</td>
-                <td style={{ padding: '14px 16px', color: C.muted }}>{s.motivo}</td>
-                <td style={{ padding: '14px 16px' }}><Badge estado={s.estado} /></td>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ padding: 24, textAlign: 'center', color: C.muted }}>No se encontraron solicitudes con este filtro.</td>
+              </tr>
+            ) : (
+              filtered.map((s) => (
+                <tr key={s.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                  <td style={{ padding: '14px 16px', fontWeight: 600 }}>{s.vivienda}</td>
+                  <td style={{ padding: '14px 16px', color: C.muted }}>{s.fecha} {s.hora}</td>
+                  <td style={{ padding: '14px 16px', color: C.amber, fontWeight: 700 }}>{s.energia} kWh</td>
+                  <td style={{ padding: '14px 16px', color: C.text }}>{s.motivo}</td>
+                  <td style={{ padding: '14px 16px' }}><Badge estado={s.estado} /></td>
+                  <td style={{ padding: '14px 16px' }}>
+                    {s.estado === 'pendiente' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <select
+                          value={selectedPanelMap[s.id] || paneles[0]?.id || 'A'}
+                          onChange={e => setSelectedPanelMap({ ...selectedPanelMap, [s.id]: e.target.value })}
+                          style={{ background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 8px', fontSize: 12 }}
+                        >
+                          {paneles.map(p => (
+                            <option key={p.id} value={p.id}>{p.nombre} ({p.disponible} kWh disp.)</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleApprove(s)}
+                          style={{ background: C.green, color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Aprobar
+                        </button>
+                        <button
+                          onClick={() => handleReject(s.id)}
+                          style={{ background: 'rgba(239,68,68,0.2)', color: C.red, border: `1px solid ${C.red}40`, padding: '6px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+                        >
+                          Rechazar
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, color: C.muted }}>
+                        {s.estado === 'aprobada' ? `Asignado de ${s.asignado || 'Panel Solar'}` : 'Solicitud denegada'}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ─── Gestión de Usuarios (Admin Module) ─────────────────────────────────────
+function GestionUsuarios({
+  users,
+  setUsers,
+  viviendas,
+}: {
+  users: UserItem[]
+  setUsers: React.Dispatch<React.SetStateAction<UserItem[]>>
+  viviendas: ViviendaItem[]
+}) {
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'todos' | 'admin' | 'usuario'>('todos')
+  const [showAddModal, setShowAddModal] = useState(false)
+
+  // Form state for creating user
+  const [nombre, setNombre] = useState('')
+  const [email, setEmail] = useState('')
+  const [pass, setPass] = useState('')
+  const [rol, setRol] = useState<'usuario' | 'admin'>('usuario')
+  const [viviendaId, setViviendaId] = useState<number>(viviendas[0]?.id || 1)
+  const [telefono, setTelefono] = useState('')
+  const [toast, setToast] = useState<string | null>(null)
+
+  const filteredUsers = users.filter(u =>
+    (roleFilter === 'todos' || u.rol === roleFilter) &&
+    (u.nombre.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()))
+  )
+
+  const handleCreateUser = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre || !email || !pass) return alert('Completa los campos obligatorios')
+
+    const assignedVivienda = viviendas.find(v => v.id === Number(viviendaId))
+    const newUser: UserItem = {
+      id: `u_${Date.now()}`,
+      nombre,
+      email: email.trim().toLowerCase(),
+      pass,
+      rol,
+      viviendaId: Number(viviendaId),
+      viviendaNombre: assignedVivienda ? assignedVivienda.nombre : 'Casa Residencial',
+      fechaRegistro: new Date().toISOString().split('T')[0],
+      estado: 'activo',
+      telefono,
+    }
+
+    setUsers(prev => [...prev, newUser])
+    setShowAddModal(false)
+    setNombre('')
+    setEmail('')
+    setPass('')
+    setTelefono('')
+    setToast(`✅ Usuario ${newUser.nombre} creado con éxito. Credenciales: ${newUser.email} / ${newUser.pass}`)
+    setTimeout(() => setToast(null), 5000)
+  }
+
+  const toggleUserStatus = (id: string) => {
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, estado: u.estado === 'activo' ? 'inactivo' : 'activo' } : u))
+  }
+
+  const handleDeleteUser = (id: string) => {
+    if (users.length <= 1) return alert('No puedes eliminar el único usuario del sistema')
+    setUsers(prev => prev.filter(u => u.id !== id))
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Gestión de Usuarios del Sistema</h2>
+          <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>Módulo para creación de accesos y asignación de viviendas residenciales</p>
+        </div>
+
+        <button
+          onClick={() => setShowAddModal(true)}
+          style={{
+            background: `linear-gradient(135deg, ${C.blue}, #1d4ed8)`,
+            color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px',
+            fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+            boxShadow: `0 4px 14px ${C.blue}40`
+          }}
+        >
+          <UserPlus size={18} /> Crear Nuevo Usuario
+        </button>
+      </div>
+
+      {toast && (
+        <div style={{
+          padding: '12px 16px', background: `${C.green}20`, border: `1px solid ${C.green}50`,
+          borderRadius: 8, color: C.green, fontSize: 13, fontWeight: 600, marginBottom: 20
+        }}>
+          {toast}
+        </div>
+      )}
+
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <StatCard icon={<Users size={18} />} label="Total Usuarios" value={`${users.length}`} sub="Registrados" color={C.blueLight} />
+        <StatCard icon={<Shield size={18} />} label="Administradores" value={`${users.filter(u => u.rol === 'admin').length}`} sub="Acceso Total" color={C.purple} />
+        <StatCard icon={<User size={18} />} label="Usuarios Residenciales" value={`${users.filter(u => u.rol === 'usuario').length}`} sub="Residentes de viviendas" color={C.green} />
+        <StatCard icon={<CheckCircle size={18} />} label="Cuentas Activas" value={`${users.filter(u => u.estado === 'activo').length}`} sub="Operativas" color={C.amber} />
+      </div>
+
+      {/* Filter and Search toolbar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', width: 280 }}>
+          <Search size={16} color={C.muted} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o correo..."
+            style={{ width: '100%', padding: '9px 12px 9px 36px', ...glass, color: C.text, fontSize: 13 }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 3, border: `1px solid ${C.border}` }}>
+          {(['todos', 'admin', 'usuario'] as const).map(r => (
+            <button
+              key={r}
+              onClick={() => setRoleFilter(r)}
+              style={{
+                background: roleFilter === r ? C.blue : 'transparent',
+                color: roleFilter === r ? '#fff' : C.muted,
+                border: 'none', borderRadius: 6, padding: '6px 14px',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize'
+              }}
+            >
+              {r === 'todos' ? 'Todos' : r === 'admin' ? 'Administradores' : 'Usuarios'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* User Table */}
+      <div style={{ ...glass, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+              {['Usuario', 'Correo Electrónico', 'Contraseña', 'Rol', 'Vivienda Asignada', 'Estado', 'Acciones'].map(h => (
+                <th key={h} style={{ padding: '14px 16px', textAlign: 'left', color: C.dim, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredUsers.map(u => (
+              <tr key={u.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                <td style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%',
+                      background: u.rol === 'admin' ? `linear-gradient(135deg, ${C.purple}, ${C.blue})` : `linear-gradient(135deg, ${C.blue}, ${C.green})`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#fff'
+                    }}>
+                      {u.nombre.charAt(0)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, color: C.text }}>{u.nombre}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>Reg: {u.fechaRegistro}</div>
+                    </div>
+                  </div>
+                </td>
+                <td style={{ padding: '14px 16px', color: C.blueLight }}>{u.email}</td>
+                <td style={{ padding: '14px 16px', fontFamily: 'monospace', color: C.muted }}>{u.pass}</td>
+                <td style={{ padding: '14px 16px' }}><Badge estado={u.rol} /></td>
+                <td style={{ padding: '14px 16px', color: C.text, fontWeight: 500 }}>
+                  {u.rol === 'usuario' ? (u.viviendaNombre || 'Casa García-López') : '— N/A (Admin) —'}
+                </td>
+                <td style={{ padding: '14px 16px' }}>
+                  <span style={{
+                    color: u.estado === 'activo' ? C.green : C.red,
+                    fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: u.estado === 'activo' ? C.green : C.red }} />
+                    {u.estado === 'activo' ? 'Activo' : 'Inactivo'}
+                  </span>
+                </td>
+                <td style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => toggleUserStatus(u.id)}
+                      style={{
+                        background: u.estado === 'activo' ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+                        border: `1px solid ${u.estado === 'activo' ? C.red : C.green}40`,
+                        color: u.estado === 'activo' ? C.red : C.green,
+                        borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer'
+                      }}
+                    >
+                      {u.estado === 'activo' ? 'Desactivar' : 'Activar'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(u.id)}
+                      style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`, color: C.muted, borderRadius: 6, padding: '4px 8px', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Modal: Crear Usuario */}
+      {showAddModal && (
+        <Modal title="👤 Registrar Nuevo Usuario en el Sistema" onClose={() => setShowAddModal(false)} maxWidth={560}>
+          <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Nombre Completo</label>
+              <div style={{ position: 'relative' }}>
+                <User size={16} color={C.muted} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  value={nombre} onChange={e => setNombre(e.target.value)}
+                  placeholder="ej. María Fernández" required
+                  style={{ width: '100%', padding: '11px 12px 11px 36px', ...glass, color: C.text }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Correo Electrónico</label>
+                <div style={{ position: 'relative' }}>
+                  <Mail size={16} color={C.muted} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="maria@gmail.com" required
+                    style={{ width: '100%', padding: '11px 12px 11px 36px', ...glass, color: C.text }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Contraseña</label>
+                <div style={{ position: 'relative' }}>
+                  <Key size={16} color={C.muted} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    type="text" value={pass} onChange={e => setPass(e.target.value)}
+                    placeholder="clave123" required
+                    style={{ width: '100%', padding: '11px 12px 11px 36px', ...glass, color: C.text }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Rol del Usuario</label>
+                <select
+                  value={rol} onChange={e => setRol(e.target.value as any)}
+                  style={{ width: '100%', padding: '11px 12px', ...glass, color: C.text, background: C.bg }}
+                >
+                  <option value="usuario">Usuario Residencial</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Vivienda Asignada</label>
+                <select
+                  value={viviendaId} onChange={e => setViviendaId(Number(e.target.value))}
+                  disabled={rol === 'admin'}
+                  style={{ width: '100%', padding: '11px 12px', ...glass, color: C.text, background: C.bg }}
+                >
+                  {viviendas.map(v => (
+                    <option key={v.id} value={v.id}>{v.nombre} ({v.panel})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Teléfono de Contacto (opcional)</label>
+              <div style={{ position: 'relative' }}>
+                <Phone size={16} color={C.muted} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  value={telefono} onChange={e => setTelefono(e.target.value)}
+                  placeholder="+593 99 000 1111"
+                  style={{ width: '100%', padding: '11px 12px 11px 36px', ...glass, color: C.text }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button
+                type="submit"
+                style={{ flex: 1, background: `linear-gradient(135deg, ${C.blue}, #1d4ed8)`, color: '#fff', border: 'none', padding: 12, borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Guardar Usuario
+              </button>
+              <button
+                type="button" onClick={() => setShowAddModal(false)}
+                style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`, color: C.muted, padding: 12, borderRadius: 8, cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }
@@ -1649,9 +2063,9 @@ function Facturacion({ viviendas }: { viviendas: ViviendaItem[] }) {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Facturación</h2>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Facturación Comunitaria</h2>
         <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>
-          Julio 2026 · Compra: €{precioCompra.toFixed(2)}/kWh · Venta: €{precioVenta.toFixed(2)}/kWh
+          Tarifas vigentes · Compra: €{precioCompra.toFixed(2)}/kWh · Venta: €{precioVenta.toFixed(2)}/kWh
         </p>
       </div>
 
@@ -1680,7 +2094,7 @@ function Facturacion({ viviendas }: { viviendas: ViviendaItem[] }) {
           </tbody>
           <tfoot>
             <tr style={{ borderTop: `2px solid ${C.borderBright}`, background: 'rgba(37,99,235,0.06)' }}>
-              <td style={{ padding: '14px 20px', fontWeight: 800, fontSize: 12, textTransform: 'uppercase', color: C.blueLight }} colSpan={2}>Totales</td>
+              <td style={{ padding: '14px 20px', fontWeight: 800, fontSize: 12, textTransform: 'uppercase', color: C.blueLight }} colSpan={2}>Totales Red</td>
               <td style={{ padding: '14px 20px', fontWeight: 800, color: totCompra > 0 ? C.red : C.dim }}>{totCompra.toFixed(1)}</td>
               <td style={{ padding: '14px 20px', fontWeight: 800, color: totVende > 0 ? C.green : C.dim }}>{totVende.toFixed(1)}</td>
               <td style={{ padding: '14px 20px', fontWeight: 800, color: totExtra > 0 ? C.amber : C.dim }}>{totExtra.toFixed(1)}</td>
@@ -1697,14 +2111,13 @@ function Facturacion({ viviendas }: { viviendas: ViviendaItem[] }) {
 
 // ─── Notificaciones ─────────────────────────────────────────────────────────
 function Notificaciones() {
-  const [nots, setNots] = useState(notificaciones)
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Centro de Notificaciones</h2>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {nots.map(n => (
+        {notificaciones.map(n => (
           <div key={n.id} style={{ ...glass, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
             <Bell size={16} color={C.blueLight} />
             <div style={{ flex: 1 }}>
@@ -1719,7 +2132,7 @@ function Notificaciones() {
 }
 
 // ─── Reportes ───────────────────────────────────────────────────────────────
-function Reportes({ viviendas, paneles }: { viviendas: ViviendaItem[]; paneles: PanelItem[] }) {
+function Reportes({ viviendas }: { viviendas: ViviendaItem[]; paneles: PanelItem[] }) {
   const datosCompraVende = viviendas.map(v => ({
     name: v.nombre.replace('Casa ', ''),
     compra: parseFloat(Math.max(0, v.consumo - v.disponible).toFixed(1)),
@@ -1748,7 +2161,7 @@ function Reportes({ viviendas, paneles }: { viviendas: ViviendaItem[]; paneles: 
         </div>
 
         <div style={{ ...glass, padding: 20 }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700 }}>Vende por Vivienda (kWh)</h3>
+          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700 }}>Excedente Vendido (kWh)</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={datosCompraVende}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -1764,30 +2177,426 @@ function Reportes({ viviendas, paneles }: { viviendas: ViviendaItem[]; paneles: 
   )
 }
 
-// ─── Main App Container ─────────────────────────────────────────────────────
-type Page = 'dashboard' | 'viviendas' | 'paneles' | 'sensores' | 'solicitudes' | 'facturacion' | 'notificaciones' | 'reportes'
+// ─── APARTADO DE USUARIO (User Portal) ───────────────────────────────────────
+function UserPortal({
+  currentUser,
+  viviendas,
+  requests,
+  setRequests,
+  onLogout,
+  onSwitchAdmin,
+}: {
+  currentUser: UserItem
+  viviendas: ViviendaItem[]
+  requests: EnergyRequest[]
+  setRequests: React.Dispatch<React.SetStateAction<EnergyRequest[]>>
+  onLogout: () => void
+  onSwitchAdmin?: () => void
+}) {
+  const [activeTab, setActiveTab] = useState<'resumen' | 'pedir' | 'solicitudes' | 'factura'>('resumen')
+  
+  // Request Form States
+  const [kwh, setKwh] = useState('2.5')
+  const [motivo, setMotivo] = useState('Aire acondicionado adicional')
+  const [prioridad, setPrioridad] = useState<'normal' | 'alta' | 'emergencia'>('normal')
+  const [toast, setToast] = useState<string | null>(null)
+
+  const myVivienda = viviendas.find(v => v.id === currentUser.viviendaId) ||
+    viviendas.find(v => v.nombre === currentUser.viviendaNombre) ||
+    viviendas[0]
+
+  const myRequests = requests.filter(r => r.vivienda === myVivienda?.nombre || r.userId === currentUser.id)
+
+  const triggerToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  const handleCreateEnergyRequest = (e: React.FormEvent) => {
+    e.preventDefault()
+    const cant = parseFloat(kwh)
+    if (isNaN(cant) || cant <= 0) return alert('Por favor ingresa una cantidad de kWh válida.')
+
+    const newReq: EnergyRequest = {
+      id: Date.now(),
+      userId: currentUser.id,
+      vivienda: myVivienda?.nombre || 'Casa Residencial',
+      viviendaId: myVivienda?.id || 1,
+      fecha: new Date().toISOString().split('T')[0],
+      hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      energia: cant,
+      consumoActual: myVivienda?.consumo || 3.2,
+      motivo: motivo || 'Consumo residencial extra',
+      prioridad,
+      estado: 'pendiente',
+      costo: parseFloat((cant * 0.14).toFixed(2)),
+    }
+
+    setRequests(prev => [newReq, ...prev])
+    setMotivo('')
+    setActiveTab('solicitudes')
+    triggerToast(`⚡ Solicitud enviada al Administrador: ${cant} kWh. Recibirás respuesta en breve.`)
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', flexDirection: 'column' }}>
+      {/* Top Navigation Bar */}
+      <header style={{
+        height: 70, borderBottom: `1px solid ${C.border}`, background: 'rgba(6,14,30,0.95)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 38, height: 38, background: `linear-gradient(135deg, ${C.amber}, ${C.blue})`,
+            borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <Sun size={22} color="#fff" />
+          </div>
+          <div>
+            <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em' }}>
+              SOLAR<span style={{ color: C.blue }}>SMART</span>
+            </span>
+            <span style={{ fontSize: 11, color: C.green, marginLeft: 8, fontWeight: 600, background: `${C.green}18`, padding: '2px 8px', borderRadius: 10 }}>
+              Portal Residencial
+            </span>
+          </div>
+        </div>
+
+        {/* User Info & Switch Admin toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {onSwitchAdmin && (
+            <button
+              onClick={onSwitchAdmin}
+              style={{
+                background: 'rgba(139,92,246,0.15)', border: `1px solid ${C.purple}40`,
+                color: C.purple, padding: '7px 14px', borderRadius: 8, fontSize: 13,
+                fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+              }}
+            >
+              <Shield size={15} /> Modo Administrador
+            </button>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', padding: '6px 14px', borderRadius: 20, border: `1px solid ${C.border}` }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: '50%', background: C.blue,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13
+            }}>
+              {currentUser.nombre.charAt(0)}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{currentUser.nombre}</span>
+              <span style={{ fontSize: 11, color: C.muted }}>{myVivienda?.nombre}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={onLogout}
+            title="Cerrar sesión"
+            style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`, color: C.muted, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <EyeOff size={16} /> Salir
+          </button>
+        </div>
+      </header>
+
+      {/* Main Portal Body */}
+      <div style={{ flex: 1, maxWidth: 1200, width: '100%', margin: '0 auto', padding: '32px 24px' }}>
+        
+        {toast && (
+          <div style={{
+            padding: '14px 20px', background: `${C.green}20`, border: `1px solid ${C.green}50`,
+            borderRadius: 10, color: C.green, fontSize: 14, fontWeight: 600, marginBottom: 24,
+            display: 'flex', alignItems: 'center', gap: 10
+          }}>
+            <CheckCircle size={18} />
+            {toast}
+          </div>
+        )}
+
+        {/* Greeting Banner */}
+        <div style={{
+          ...glassPanel, padding: '24px 32px', marginBottom: 28,
+          background: `radial-gradient(ellipse at 80% 50%, rgba(37,99,235,0.15) 0%, ${C.panel} 70%)`,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20
+        }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: C.text }}>
+              Hola, {currentUser.nombre} 👋
+            </h1>
+            <p style={{ margin: '6px 0 0', color: C.muted, fontSize: 14 }}>
+              Apartado de Residente para <strong style={{ color: C.blueLight }}>{myVivienda?.nombre}</strong> · Panel fotovoltaico: {myVivienda?.panel}
+            </p>
+          </div>
+
+          <button
+            onClick={() => setActiveTab('pedir')}
+            style={{
+              background: `linear-gradient(135deg, ${C.amber}, #d97706)`,
+              color: '#fff', border: 'none', borderRadius: 10, padding: '12px 22px',
+              fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+              boxShadow: `0 4px 16px ${C.amber}40`
+            }}
+          >
+            <Zap size={18} /> Pedir Energía Adicional
+          </button>
+        </div>
+
+        {/* Tab Selector */}
+        <div style={{ display: 'flex', gap: 12, borderBottom: `1px solid ${C.border}`, paddingBottom: 16, marginBottom: 28 }}>
+          {[
+            { id: 'resumen', label: '⚡ Estado de Mi Vivienda' },
+            { id: 'pedir', label: '➕ Pedir Energía' },
+            { id: 'solicitudes', label: `📋 Mis Solicitudes (${myRequests.length})` },
+            { id: 'factura', label: '📄 Mi Factura y Consumo' },
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id as any)}
+              style={{
+                background: activeTab === t.id ? `${C.blue}25` : 'transparent',
+                color: activeTab === t.id ? C.blueLight : C.muted,
+                border: activeTab === t.id ? `1px solid ${C.blue}50` : '1px solid transparent',
+                borderRadius: 8, padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer'
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* TAB 1: RESUMEN DE LA VIVIENDA */}
+        {activeTab === 'resumen' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
+              <StatCard icon={<Zap size={20} />} label="Consumo Actual" value={`${myVivienda?.consumo} kW`} sub="Medido en tiempo real" color={C.blue} />
+              <StatCard icon={<Sun size={20} />} label="Energía Disponible" value={`${myVivienda?.disponible} kWh`} sub={`Proveniente de ${myVivienda?.panel}`} color={C.amber} />
+              <StatCard icon={<Battery size={20} />} label="Batería Residual" value={`${myVivienda?.bateria}%`} sub={myVivienda?.charging ? '⚡ Recargando...' : 'Nivel de respaldo'} color={myVivienda?.bateria && myVivienda.bateria < 30 ? C.red : C.green} />
+              <StatCard icon={<DollarSign size={20} />} label="Extra Asignado" value={`${myVivienda?.extraAsignado} kWh`} sub="Aprobado por Admin" color={C.purple} />
+            </div>
+
+            <div style={{ ...glassPanel, padding: 28 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Monitoreo Energético del Hogar</h3>
+                  <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 13 }}>Estado de carga de la batería fotovoltaica comunitaria</p>
+                </div>
+                <Badge estado={myVivienda?.estado || 'normal'} />
+              </div>
+
+              <div style={{ width: '100%', height: 16, background: 'rgba(255,255,255,0.08)', borderRadius: 8, overflow: 'hidden', padding: 2 }}>
+                <div style={{
+                  width: `${myVivienda?.bateria}%`, height: '100%',
+                  background: `linear-gradient(90deg, ${C.blue}, ${C.green})`,
+                  borderRadius: 6, transition: 'width 0.6s ease'
+                }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.muted, marginTop: 8 }}>
+                <span>0% (Agotada)</span>
+                <span style={{ fontWeight: 700, color: C.text }}>{myVivienda?.bateria}% Carga disponible</span>
+                <span>100% (Capacidad máxima)</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: PEDIR ENERGÍA */}
+        {activeTab === 'pedir' && (
+          <div style={{ maxWidth: 650, margin: '0 auto' }}>
+            <div style={{ ...glassPanel, padding: 32 }}>
+              <div style={{ marginBottom: 24, textAlign: 'center' }}>
+                <div style={{
+                  width: 54, height: 54, background: `linear-gradient(135deg, ${C.amber}, ${C.blue})`,
+                  borderRadius: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12
+                }}>
+                  <Zap size={28} color="#fff" />
+                </div>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Solicitud de Energía Adicional</h2>
+                <p style={{ margin: '6px 0 0', color: C.muted, fontSize: 14 }}>
+                  Las solicitudes se envían directamente al Administrador para su aprobación y redistribución solar.
+                </p>
+              </div>
+
+              <form onSubmit={handleCreateEnergyRequest} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: C.text, display: 'block', marginBottom: 8 }}>
+                    Cantidad requerida (kWh)
+                  </label>
+                  <input
+                    type="number" step="0.5" min="0.5" max="20"
+                    value={kwh} onChange={e => setKwh(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '14px 16px', ...glass, color: C.text, fontSize: 18, fontWeight: 700 }}
+                  />
+                  <span style={{ fontSize: 12, color: C.muted, marginTop: 4, display: 'block' }}>
+                    Costo estimado: ${(parseFloat(kwh || '0') * 0.14).toFixed(2)} USD (Tarifa: $0.14 / kWh)
+                  </span>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: C.text, display: 'block', marginBottom: 8 }}>
+                    Motivo o Justificación del Consumo
+                  </label>
+                  <input
+                    value={motivo} onChange={e => setMotivo(e.target.value)}
+                    placeholder="ej. Recarga de vehículo eléctrico / Climatización"
+                    required
+                    style={{ width: '100%', padding: '12px 16px', ...glass, color: C.text, fontSize: 14 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: C.text, display: 'block', marginBottom: 8 }}>
+                    Nivel de Prioridad
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                    {(['normal', 'alta', 'emergencia'] as const).map(p => (
+                      <button
+                        key={p} type="button" onClick={() => setPrioridad(p)}
+                        style={{
+                          background: prioridad === p ? (p === 'emergencia' ? C.red : p === 'alta' ? C.amber : C.blue) : 'rgba(255,255,255,0.04)',
+                          color: prioridad === p ? '#fff' : C.muted,
+                          border: `1px solid ${C.border}`, borderRadius: 8, padding: '10px', fontSize: 13, fontWeight: 600,
+                          cursor: 'pointer', textTransform: 'capitalize'
+                        }}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  style={{
+                    background: `linear-gradient(135deg, ${C.green}, #16a34a)`,
+                    color: '#fff', border: 'none', borderRadius: 10, padding: '16px',
+                    fontSize: 16, fontWeight: 700, cursor: 'pointer', marginTop: 10,
+                    boxShadow: `0 4px 18px ${C.green}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                  }}
+                >
+                  <Send size={18} /> Enviar Petición al Administrador
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: MIS SOLICITUDES */}
+        {activeTab === 'solicitudes' && (
+          <div>
+            <div style={{ marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Historial de Solicitudes</h2>
+              <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 14 }}>
+                Revisa el estado en tiempo real de tus peticiones de energía
+              </p>
+            </div>
+
+            <div style={{ ...glass, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                    {['Fecha & Hora', 'Energía Pedida', 'Motivo', 'Prioridad', 'Estado', 'Respuesta / Asignación'].map(h => (
+                      <th key={h} style={{ padding: '14px 18px', textAlign: 'left', color: C.dim, fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {myRequests.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 28, textAlign: 'center', color: C.muted }}>Aún no has realizado solicitudes de energía.</td>
+                    </tr>
+                  ) : (
+                    myRequests.map(r => (
+                      <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                        <td style={{ padding: '14px 18px', color: C.muted }}>{r.fecha} {r.hora}</td>
+                        <td style={{ padding: '14px 18px', color: C.amber, fontWeight: 700, fontSize: 14 }}>{r.energia} kWh</td>
+                        <td style={{ padding: '14px 18px', color: C.text }}>{r.motivo}</td>
+                        <td style={{ padding: '14px 18px', textTransform: 'capitalize', fontWeight: 600, color: r.prioridad === 'emergencia' ? C.red : r.prioridad === 'alta' ? C.amber : C.muted }}>{r.prioridad || 'normal'}</td>
+                        <td style={{ padding: '14px 18px' }}><Badge estado={r.estado} /></td>
+                        <td style={{ padding: '14px 18px', color: C.muted }}>
+                          {r.estado === 'aprobada' ? (
+                            <span style={{ color: C.green, fontWeight: 600 }}>✅ Energía acreditada ({r.asignado || 'Red Solar'})</span>
+                          ) : r.estado === 'rechazada' ? (
+                            <span style={{ color: C.red }}>❌ Solicitud denegada por administración</span>
+                          ) : (
+                            <span style={{ color: C.amber }}>⏳ En revisión por el Administrador</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: MI FACTURA */}
+        {activeTab === 'factura' && (
+          <div style={{ ...glassPanel, padding: 28 }}>
+            <h2 style={{ margin: '0 0 16px', fontSize: 20, fontWeight: 800 }}>Resumen de Consumo & Facturación</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div>
+                <div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>Total Extra Asignado este mes</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: C.amber }}>{myVivienda?.extraAsignado} kWh</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: C.muted, marginBottom: 4 }}>Costo Total Estimado</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: C.green }}>${((myVivienda?.extraAsignado || 0) * 0.14).toFixed(2)} USD</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+// ─── Main App Container (Admin View) ─────────────────────────────────────────
+type Page = 'dashboard' | 'viviendas' | 'paneles' | 'sensores' | 'solicitudes' | 'usuarios' | 'facturacion' | 'notificaciones' | 'reportes'
 
 const NAV_ITEMS: { key: Page; label: string; icon: React.ReactNode }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
   { key: 'viviendas', label: 'Viviendas', icon: <Home size={18} /> },
   { key: 'paneles', label: 'Paneles Solares', icon: <Sun size={18} /> },
   { key: 'sensores', label: 'Sensores IoT', icon: <Activity size={18} /> },
-  { key: 'solicitudes', label: 'Solicitudes', icon: <FileText size={18} /> },
+  { key: 'solicitudes', label: 'Solicitudes de Energía', icon: <FileText size={18} /> },
+  { key: 'usuarios', label: 'Gestión de Usuarios', icon: <Users size={18} /> },
   { key: 'facturacion', label: 'Facturación', icon: <DollarSign size={18} /> },
   { key: 'notificaciones', label: 'Notificaciones', icon: <Bell size={18} /> },
   { key: 'reportes', label: 'Reportes', icon: <BarChart2 size={18} /> },
 ]
 
-function MainApp({ onLogout }: { onLogout: () => void }) {
+function MainApp({
+  currentUser,
+  users,
+  setUsers,
+  viviendas,
+  setViviendas,
+  paneles,
+  setPaneles,
+  requests,
+  setRequests,
+  onLogout,
+  onSwitchUserPortal,
+}: {
+  currentUser: UserItem
+  users: UserItem[]
+  setUsers: React.Dispatch<React.SetStateAction<UserItem[]>>
+  viviendas: ViviendaItem[]
+  setViviendas: React.Dispatch<React.SetStateAction<ViviendaItem[]>>
+  paneles: PanelItem[]
+  setPaneles: React.Dispatch<React.SetStateAction<PanelItem[]>>
+  requests: EnergyRequest[]
+  setRequests: React.Dispatch<React.SetStateAction<EnergyRequest[]>>
+  onLogout: () => void
+  onSwitchUserPortal?: () => void
+}) {
   const [page, setPage] = useState<Page>('dashboard')
   const [collapsed, setCollapsed] = useState(false)
 
-  // Central Dynamic State
-  const [viviendas, setViviendas] = useState<ViviendaItem[]>(INITIAL_VIVIENDAS)
-  const [paneles, setPaneles] = useState<PanelItem[]>(INITIAL_PANELES)
-  const [requests, setRequests] = useState<any[]>(solicitudes)
-
-  // Synchronized Add Handler (Adds 1 Vivienda + 1 Panel Solar)
   const handleAddViviendaPanel = (nueva: {
     nombre: string
     consumo: number
@@ -1842,7 +2651,6 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
     setPaneles(prev => [...prev, newPanel])
   }
 
-  // Synchronized Delete Handler (Removes Vivienda & Panel Solar)
   const handleDeleteViviendaPanel = (id: number) => {
     const targetVivienda = viviendas.find(v => v.id === id)
     if (!targetVivienda) return
@@ -1853,7 +2661,6 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
     setPaneles(prev => prev.filter(p => p.nombre !== targetPanelNombre && p.asignadoA !== targetVivienda.nombre))
   }
 
-  // Handler para añadir energía eólica
   const handleAddEolica = (viviendaId: number, potencia: number) => {
     setViviendas(prev =>
       prev.map(v =>
@@ -1864,24 +2671,17 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
     )
   }
 
-  // Asignar energía desde un panel a una vivienda (kWh)
   const handleAssignEnergyFromPanel = (panelId: string, kwh: number, viviendaId: number) => {
-    // decrement available energy on panel
     setPaneles(prev => prev.map(p => p.id === panelId ? { ...p, disponible: Math.max(0, parseFloat((p.disponible - kwh).toFixed(2))) } : p))
-
-    // read current vivienda values
     const targetV = viviendas.find(v => v.id === viviendaId)
     const startBateria = targetV ? targetV.bateria : 0
     const limite = targetV ? Math.max(0.1, targetV.limite) : 1
 
-    // increment assigned energy and disponible for vivienda
     setViviendas(prev => prev.map(v => v.id === viviendaId ? { ...v, disponible: parseFloat((v.disponible + kwh).toFixed(2)), extraAsignado: parseFloat((v.extraAsignado + kwh).toFixed(2)) } : v))
 
-    // compute target battery percent assuming 'limite' ~ battery kWh capacity
     const deltaPercent = Math.round((kwh / limite) * 100)
     const targetBateria = Math.min(100, startBateria + deltaPercent)
 
-    // set charging flag for UI and animate battery % increase for visual feedback
     setViviendas(prev => prev.map(v => v.id === viviendaId ? { ...v, charging: true } : v))
     if (targetBateria > startBateria) {
       const steps = Math.max(1, targetBateria - startBateria)
@@ -1891,12 +2691,10 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
         setViviendas(prev => prev.map(v => v.id === viviendaId ? { ...v, bateria: Math.min(targetBateria, startBateria + stepCount) } : v))
         if (stepCount >= steps) {
           clearInterval(iv)
-          // small delay to show final state then stop charging visual
           setTimeout(() => setViviendas(prev => prev.map(v => v.id === viviendaId ? { ...v, charging: false } : v)), 600)
         }
       }, 60)
     } else {
-      // ensure charging flag removed if no percent change
       setTimeout(() => setViviendas(prev => prev.map(v => v.id === viviendaId ? { ...v, charging: false } : v)), 800)
     }
   }
@@ -1922,20 +2720,24 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             viviendas={viviendas}
             onAddViviendaPanel={handleAddViviendaPanel}
             onDeleteViviendaPanel={handleDeleteViviendaPanel}
-            setViviendas={setViviendas}
           />
         )
       case 'paneles':
-        return (
-          <PanelesSolares
-            paneles={paneles}
-            viviendas={viviendas}
-          />
-        )
+        return <PanelesSolares paneles={paneles} viviendas={viviendas} />
       case 'sensores':
         return <SensoresIoT viviendas={viviendas} />
       case 'solicitudes':
-        return <Solicitudes viviendas={viviendas} requests={requests} setRequests={setRequests} />
+        return (
+          <Solicitudes
+            viviendas={viviendas}
+            paneles={paneles}
+            requests={requests}
+            setRequests={setRequests}
+            onAssignEnergy={handleAssignEnergyFromPanel}
+          />
+        )
+      case 'usuarios':
+        return <GestionUsuarios users={users} setUsers={setUsers} viviendas={viviendas} />
       case 'facturacion':
         return <Facturacion viviendas={viviendas} />
       case 'notificaciones':
@@ -1959,56 +2761,48 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
         borderRight: `1px solid ${C.border}`,
         overflow: 'hidden',
       }}>
-        {/* Logo & Toggle */}
+        {/* Brand */}
         <div style={{
-          height: 64, display: 'flex', alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          padding: collapsed ? '0 12px' : '0 16px',
-          borderBottom: `1px solid ${C.border}`, flexShrink: 0
+          height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 16px', borderBottom: `1px solid ${C.border}`
         }}>
-          <div
-            onClick={() => collapsed && setCollapsed(false)}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: collapsed ? 'pointer' : 'default' }}
-            title={collapsed ? "Expandir menú" : undefined}
-          >
-            <div style={{
-              width: 32, height: 32, flexShrink: 0,
-              background: `linear-gradient(135deg, ${C.amber}, ${C.blue})`,
-              borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <Sun size={18} color="#fff" />
-            </div>
-            {!collapsed && (
-              <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
-                SOLAR<span style={{ color: C.blueLight }}>SMART</span>
-              </span>
-            )}
-          </div>
           {!collapsed && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 32, height: 32, background: `linear-gradient(135deg, ${C.amber}, ${C.blue})`,
+                borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Sun size={18} color="#fff" />
+              </div>
+              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em' }}>
+                SOLAR<span style={{ color: C.blue }}>SMART</span>
+              </span>
+            </div>
+          )}
+          {collapsed && (
             <button
-              onClick={() => setCollapsed(true)}
-              title="Contraer menú lateral"
+              onClick={() => setCollapsed(false)}
               style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: `1px solid ${C.border}`,
-                borderRadius: 6,
-                padding: '6px',
-                color: C.dim,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s'
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'none', border: 'none', color: C.muted, cursor: 'pointer'
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = C.text }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = C.dim }}
             >
-              <ChevronLeft size={16} />
+              <Sun size={22} color={C.amber} />
             </button>
           )}
         </div>
 
-        {/* Nav */}
+        {/* User Info Header in Sidebar */}
+        {!collapsed && (
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.border}`, background: 'rgba(255,255,255,0.02)' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.purple, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Shield size={14} /> {currentUser.nombre}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted }}>Administrador Principal</div>
+          </div>
+        )}
+
+        {/* Nav Items */}
         <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
           {NAV_ITEMS.map(item => {
             const active = page === item.key
@@ -2029,8 +2823,21 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
           })}
         </nav>
 
-        {/* Bottom */}
+        {/* Bottom Switch Portal & Logout */}
         <div style={{ padding: '12px 8px', borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {onSwitchUserPortal && !collapsed && (
+            <button
+              onClick={onSwitchUserPortal}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 12px', borderRadius: 8, border: `1px solid ${C.green}40`,
+                background: 'rgba(34,197,94,0.1)', color: C.green, cursor: 'pointer', fontSize: 13, fontWeight: 600
+              }}
+            >
+              <User size={15} /> Ver Portal Usuario
+            </button>
+          )}
+
           <button
             onClick={() => setCollapsed(!collapsed)}
             title={collapsed ? "Expandir menú" : "Contraer menú"}
@@ -2038,23 +2845,17 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
               width: '100%', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
               gap: 12, padding: '10px 14px', borderRadius: 8, border: 'none',
               background: 'transparent', color: C.dim, cursor: 'pointer', fontSize: 14,
-              transition: 'all 0.15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = C.text; e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = C.dim; e.currentTarget.style.background = 'transparent' }}
           >
             {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             {!collapsed && <span>Contraer menú</span>}
           </button>
+
           <button onClick={onLogout} title="Cerrar sesión" style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
             gap: 12, padding: '10px 14px', borderRadius: 8, border: 'none',
             background: 'transparent', color: C.dim, cursor: 'pointer', fontSize: 14,
-            transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = C.text; e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-          onMouseLeave={e => { e.currentTarget.style.color = C.dim; e.currentTarget.style.background = 'transparent' }}
-          >
+          }}>
             <EyeOff size={18} />
             {!collapsed && <span>Cerrar sesión</span>}
           </button>
@@ -2071,21 +2872,10 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <button
               onClick={() => setCollapsed(!collapsed)}
-              title={collapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
               style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: `1px solid ${C.border}`,
-                borderRadius: 8,
-                padding: '8px',
-                color: C.text,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s'
+                background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`,
+                borderRadius: 8, padding: '8px', color: C.text, cursor: 'pointer'
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
             >
               <Menu size={18} />
             </button>
@@ -2093,9 +2883,10 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
               {NAV_ITEMS.find(n => n.key === page)?.label}
             </h1>
           </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.green }} />
-            <span style={{ fontSize: 12, color: C.green }}>Sistema En Línea</span>
+            <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>Modo Administrador En Línea</span>
           </div>
         </header>
 
@@ -2109,25 +2900,48 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
   )
 }
 
-// ─── Root ────────────────────────────────────────────────────────────────────
+// ─── Root Component ──────────────────────────────────────────────────────────
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(true)
+  const [users, setUsers] = useState<UserItem[]>(INITIAL_USERS)
+  const [viviendas, setViviendas] = useState<ViviendaItem[]>(INITIAL_VIVIENDAS)
+  const [paneles, setPaneles] = useState<PanelItem[]>(INITIAL_PANELES)
+  const [requests, setRequests] = useState<EnergyRequest[]>(INITIAL_SOLICITUDES)
+  
+  const [currentUser, setCurrentUser] = useState<UserItem | null>(null)
+  const [viewModeOverride, setViewModeOverride] = useState<'admin' | 'usuario' | null>(null)
 
-  return loggedIn
-    ? <MainApp onLogout={() => setLoggedIn(false)} />
-    : <LoginPage onLogin={() => setLoggedIn(true)} />
-}
+  if (!currentUser) {
+    return <LoginPage users={users} onLogin={(user) => { setCurrentUser(user); setViewModeOverride(null) }} />
+  }
 
-function AssignRow({ r, paneles, onAssign }: { r: any; paneles: PanelItem[]; onAssign: (panelId: string, kwh: number) => void }) {
-  const [panelId, setPanelId] = useState<string>(paneles[0]?.id || '')
-  const [kwh, setKwh] = useState<string>((paneles[0]?.disponible && Math.min(paneles[0].disponible, r.energia)) ? String(Math.min(paneles[0].disponible, r.energia)) : String(r.energia || '1'))
+  const effectiveRole = viewModeOverride || currentUser.rol
+
+  if (effectiveRole === 'usuario') {
+    return (
+      <UserPortal
+        currentUser={currentUser}
+        viviendas={viviendas}
+        requests={requests}
+        setRequests={setRequests}
+        onLogout={() => { setCurrentUser(null); setViewModeOverride(null) }}
+        onSwitchAdmin={currentUser.rol === 'admin' ? () => setViewModeOverride('admin') : undefined}
+      />
+    )
+  }
+
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <select value={panelId} onChange={e => setPanelId(e.target.value)} style={{ padding: '8px 10px', ...glass }}>
-        {paneles.map(p => <option key={p.id} value={p.id}>{p.nombre} ({p.disponible} kWh disp.)</option>)}
-      </select>
-      <input type="number" step="0.1" value={kwh} onChange={e => setKwh(e.target.value)} style={{ width: 80, padding: '8px 10px', ...glass }} />
-      <button onClick={() => onAssign(panelId, parseFloat(kwh))} style={{ background: C.blue, color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 6 }}>Asignar</button>
-    </div>
+    <MainApp
+      currentUser={currentUser}
+      users={users}
+      setUsers={setUsers}
+      viviendas={viviendas}
+      setViviendas={setViviendas}
+      paneles={paneles}
+      setPaneles={setPaneles}
+      requests={requests}
+      setRequests={setRequests}
+      onLogout={() => { setCurrentUser(null); setViewModeOverride(null) }}
+      onSwitchUserPortal={() => setViewModeOverride('usuario')}
+    />
   )
 }
