@@ -57,6 +57,8 @@ export interface ViviendaItem {
   estado: 'normal' | 'elevado' | 'critico'
   limite: number
   extraAsignado: number
+  eolicaPotencia?: number
+  tieneEolica?: boolean
 }
 
 export interface PanelItem {
@@ -74,10 +76,10 @@ export interface PanelItem {
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
 const INITIAL_VIVIENDAS: ViviendaItem[] = [
-  { id: 1, nombre: 'Casa García-López', panel: 'Panel A', consumo: 3.2, disponible: 8.4, bateria: 74, sensor: true, online: true, estado: 'normal', limite: 5.0, extraAsignado: 1.2 },
-  { id: 2, nombre: 'Casa Martínez', panel: 'Panel B', consumo: 6.8, disponible: 2.1, bateria: 31, sensor: true, online: true, estado: 'elevado', limite: 7.0, extraAsignado: 2.5 },
-  { id: 3, nombre: 'Casa López', panel: 'Panel C', consumo: 9.1, disponible: 0.4, bateria: 12, sensor: false, online: true, estado: 'critico', limite: 8.0, extraAsignado: 3.8 },
-  { id: 4, nombre: 'Casa Sánchez', panel: 'Panel D', consumo: 2.7, disponible: 11.2, bateria: 88, sensor: true, online: true, estado: 'normal', limite: 5.0, extraAsignado: 0.0 },
+  { id: 1, nombre: 'Casa García-López', panel: 'Panel A', consumo: 3.2, disponible: 8.4, bateria: 74, sensor: true, online: true, estado: 'normal', limite: 5.0, extraAsignado: 1.2, eolicaPotencia: 0, tieneEolica: false },
+  { id: 2, nombre: 'Casa Martínez', panel: 'Panel B', consumo: 6.8, disponible: 2.1, bateria: 31, sensor: true, online: true, estado: 'elevado', limite: 7.0, extraAsignado: 2.5, eolicaPotencia: 0, tieneEolica: false },
+  { id: 3, nombre: 'Casa López', panel: 'Panel C', consumo: 9.1, disponible: 0.4, bateria: 12, sensor: false, online: true, estado: 'critico', limite: 8.0, extraAsignado: 3.8, eolicaPotencia: 0, tieneEolica: false },
+  { id: 4, nombre: 'Casa Sánchez', panel: 'Panel D', consumo: 2.7, disponible: 11.2, bateria: 88, sensor: true, online: true, estado: 'normal', limite: 5.0, extraAsignado: 0.0, eolicaPotencia: 0, tieneEolica: false },
 ]
 
 const INITIAL_PANELES: PanelItem[] = [
@@ -294,19 +296,21 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
   )
 }
 
-// ─── Energy Flow Diagram (NODO CENTRAL DE DISTRIBUCIÓN) ─────────────────────
+// ─── Energy Flow Diagram (con energía eólica) ──────────────────────────────
 function EnergyFlowDiagram({
   viviendas,
   paneles,
   onAddViviendaPanel,
   onDeleteViviendaPanel,
   onSelectLine,
+  onAddEolica,
 }: {
   viviendas: ViviendaItem[]
   paneles: PanelItem[]
-  onAddViviendaPanel: (data: { nombre: string; consumo: number; potencia: number; bateria: number; estado: 'normal' | 'elevado' | 'critico' }) => void
+  onAddViviendaPanel: (data: any) => void
   onDeleteViviendaPanel: (id: number) => void
   onSelectLine: (info: string) => void
+  onAddEolica: (viviendaId: number, potencia: number) => void
 }) {
   const [selected, setSelected] = useState<number | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -314,6 +318,11 @@ function EnergyFlowDiagram({
   const [showRedistributeModal, setShowRedistributeModal] = useState(false)
   const [showSurplusModal, setShowSurplusModal] = useState(false)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
+
+  // Estado para el modal de eólica
+  const [eolicaModalOpen, setEolicaModalOpen] = useState(false)
+  const [eolicaViviendaId, setEolicaViviendaId] = useState<number | null>(null)
+  const [eolicaPotenciaInput, setEolicaPotenciaInput] = useState('5.0')
 
   // Form State for Add Vivienda + Panel
   const [newNombre, setNewNombre] = useState('')
@@ -373,6 +382,20 @@ function EnergyFlowDiagram({
 
   const handleBalanceLoad = () => {
     triggerToast('⚖ Carga balanceada automáticamente entre todos los paneles y viviendas.')
+  }
+
+  const handleConfirmEolica = () => {
+    if (eolicaViviendaId === null) return
+    const potencia = parseFloat(eolicaPotenciaInput)
+    if (isNaN(potencia) || potencia <= 0) {
+      alert('Ingresa una potencia válida en kW')
+      return
+    }
+    onAddEolica(eolicaViviendaId, potencia)
+    setEolicaModalOpen(false)
+    setEolicaViviendaId(null)
+    setEolicaPotenciaInput('5.0')
+    triggerToast(`💨 Se ha añadido energía eólica de ${potencia} kW a la vivienda.`)
   }
 
   return (
@@ -435,12 +458,11 @@ function EnergyFlowDiagram({
             })}
           </g>
 
-          {/* Central Horizontal VPP Line (In the middle of the canvas) */}
+          {/* Central Horizontal VPP Line */}
           {N > 0 && (
             <g>
               <line x1={40} y1={nodeY} x2={svgWidth - 40} y2={nodeY} stroke={C.blue} strokeWidth="3" opacity="0.85" />
               <line x1={40} y1={nodeY} x2={svgWidth - 40} y2={nodeY} stroke="#60a5fa" strokeWidth="8" opacity="0.15" />
-              {/* Central VPP Pill Badge */}
               <rect x={svgWidth / 2 - 75} y={nodeY - 17} width="150" height="34" rx="17" fill="#050e21" stroke={C.blueLight} strokeWidth="2" />
               <foreignObject x={svgWidth / 2 - 70} y={nodeY - 14} width="140" height="28">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, height: '100%', color: C.text, fontSize: 13, fontWeight: 800, letterSpacing: '0.08em' }}>
@@ -468,12 +490,13 @@ function EnergyFlowDiagram({
             const xHouse = x - 48
             const xPanel = x + 36
 
+            const tieneEolica = v.tieneEolica && v.eolicaPotencia && v.eolicaPotencia > 0
+
             return (
               <g key={v.id}>
                 {/* ── VERTICAL CONNECTOR LINE TO CENTRAL VPP LINE ── */}
                 {isAbove ? (
                   <>
-                    {/* From Top Item down to VPP Line */}
                     <line
                       x1={x} y1={itemY + 75} x2={x} y2={nodeY - 17}
                       stroke={color}
@@ -494,7 +517,6 @@ function EnergyFlowDiagram({
                   </>
                 ) : (
                   <>
-                    {/* From VPP Line down to Bottom Item */}
                     <line
                       x1={x} y1={nodeY + 17} x2={x} y2={itemY - 22}
                       stroke={color}
@@ -539,7 +561,41 @@ function EnergyFlowDiagram({
                   </text>
                 </g>
 
-                {/* ── RIGHT: PANEL SOLAR CON TODAS SUS CARACTERÍSTICAS ── */}
+                {/* ── BOTÓN "+" PARA AÑADIR EÓLICA ── */}
+                <g
+                  style={{ cursor: 'pointer' }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEolicaViviendaId(v.id)
+                    setEolicaPotenciaInput(v.eolicaPotencia?.toString() || '5.0')
+                    setEolicaModalOpen(true)
+                  }}
+                >
+                  <circle cx={xHouse + 40} cy={itemY + 26} r="14" fill="#1f2937" stroke="#8B5CF6" strokeWidth="2" />
+                  <text x={xHouse + 40} y={itemY + 31} textAnchor="middle" fill="#8B5CF6" fontSize="16" fontWeight="800">+</text>
+                </g>
+
+                {/* ── AEROGENERADOR (si tiene eólica) ── */}
+                {tieneEolica && (
+                  <g transform={`translate(${xHouse + 40}, ${itemY - 40})`}>
+                    {/* Torre */}
+                    <line x1="0" y1="0" x2="0" y2="20" stroke="#94a3b8" strokeWidth="2" />
+                    {/* Turbina (aspas giratorias) */}
+                    <g style={{ transformOrigin: '0px 0px', animation: 'spin 4s linear infinite' }}>
+                      <line x1="0" y1="0" x2="0" y2="-18" stroke="#22C55E" strokeWidth="3" strokeLinecap="round" />
+                      <line x1="0" y1="0" x2="15" y2="9" stroke="#22C55E" strokeWidth="3" strokeLinecap="round" />
+                      <line x1="0" y1="0" x2="-15" y2="9" stroke="#22C55E" strokeWidth="3" strokeLinecap="round" />
+                    </g>
+                    {/* Núcleo */}
+                    <circle cx="0" cy="0" r="3" fill="#22C55E" />
+                    {/* Potencia debajo */}
+                    <text x="0" y="30" textAnchor="middle" fill="#8B5CF6" fontSize="9" fontWeight="700">
+                      {v.eolicaPotencia} kW
+                    </text>
+                  </g>
+                )}
+
+                {/* ── RIGHT: PANEL SOLAR ── */}
                 <g style={{ cursor: 'pointer' }} onClick={() => handleLineClick(i)}>
                   {/* Panel Title */}
                   <text x={xPanel} y={itemY - 24} textAnchor="middle" fill={C.text} fontSize="11" fontWeight="700" letterSpacing="0.04em">
@@ -609,7 +665,7 @@ function EnergyFlowDiagram({
         </svg>
       </div>
 
-      {/* ── BOTTOM ACTION BUTTONS (Matching Image 3) ── */}
+      {/* ── BOTTOM ACTION BUTTONS ── */}
       <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
         <button
           onClick={() => setShowRedistributeModal(true)}
@@ -685,6 +741,7 @@ function EnergyFlowDiagram({
             </div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
               Consumo actual: {viviendas[selected].consumo} kW · Batería: {viviendas[selected].bateria}%
+              {viviendas[selected].tieneEolica && ` · Eólica: ${viviendas[selected].eolicaPotencia} kW`}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -805,6 +862,7 @@ function EnergyFlowDiagram({
                       <div style={{ fontWeight: 600, color: C.text, fontSize: 14 }}>{v.nombre}</div>
                       <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
                         Asignado a: <span style={{ color: C.blueLight }}>{v.panel}</span> · Consumo: {v.consumo} kW
+                        {v.tieneEolica && ` · Eólica: ${v.eolicaPotencia} kW`}
                       </div>
                     </div>
                     <button
@@ -896,6 +954,77 @@ function EnergyFlowDiagram({
           </div>
         </Modal>
       )}
+
+      {/* ── MODAL PARA AÑADIR ENERGÍA EÓLICA ── */}
+      {eolicaModalOpen && (
+        <Modal title="💨 Agregar Energía Eólica" onClose={() => setEolicaModalOpen(false)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>
+              Ingresa la potencia nominal del aerogenerador para esta vivienda.
+            </p>
+            <div>
+              <label style={{ fontSize: 13, color: C.muted, display: 'block', marginBottom: 6 }}>Potencia (kW)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                value={eolicaPotenciaInput}
+                onChange={e => setEolicaPotenciaInput(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  ...glass,
+                  color: C.text,
+                  fontSize: 15,
+                  outline: 'none',
+                  background: 'rgba(255,255,255,0.05)'
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={handleConfirmEolica}
+                style={{
+                  flex: 1,
+                  background: `linear-gradient(135deg, #8B5CF6, #6D28D9)`,
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: 8,
+                  padding: '12px',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Agregar Aerogenerador
+              </button>
+              <button
+                onClick={() => setEolicaModalOpen(false)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${C.border}`,
+                  color: C.muted,
+                  borderRadius: 8,
+                  padding: '12px',
+                  fontSize: 14,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Incluir keyframes para animación de aspas */}
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
 }
@@ -906,11 +1035,13 @@ function Dashboard({
   paneles,
   onAddViviendaPanel,
   onDeleteViviendaPanel,
+  onAddEolica,
 }: {
   viviendas: ViviendaItem[]
   paneles: PanelItem[]
   onAddViviendaPanel: (data: any) => void
   onDeleteViviendaPanel: (id: number) => void
+  onAddEolica: (viviendaId: number, potencia: number) => void
 }) {
   const [flowInfo, setFlowInfo] = useState<string | null>(null)
 
@@ -958,6 +1089,7 @@ function Dashboard({
         onAddViviendaPanel={onAddViviendaPanel}
         onDeleteViviendaPanel={onDeleteViviendaPanel}
         onSelectLine={setFlowInfo}
+        onAddEolica={onAddEolica}
       />
 
       {flowInfo && (
@@ -1091,6 +1223,11 @@ function Viviendas({
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16, color: C.text }}>{v.nombre}</div>
                   <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>Panel asignado: <span style={{ color: C.blueLight }}>{v.panel}</span></div>
+                  {v.tieneEolica && (
+                    <div style={{ color: C.purple, fontSize: 12, marginTop: 2 }}>
+                      💨 Energía eólica: {v.eolicaPotencia} kW
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Badge estado={v.estado} />
@@ -1634,6 +1771,8 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
       estado: nueva.estado || 'normal',
       limite: parseFloat((nueva.consumo * 1.5).toFixed(1)),
       extraAsignado: nueva.estado === 'elevado' ? 1.5 : nueva.estado === 'critico' ? 3.0 : 0.0,
+      eolicaPotencia: 0,
+      tieneEolica: false,
     }
 
     setViviendas(prev => [...prev, newVivienda])
@@ -1651,6 +1790,17 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
     setPaneles(prev => prev.filter(p => p.nombre !== targetPanelNombre && p.asignadoA !== targetVivienda.nombre))
   }
 
+  // Handler para añadir energía eólica
+  const handleAddEolica = (viviendaId: number, potencia: number) => {
+    setViviendas(prev =>
+      prev.map(v =>
+        v.id === viviendaId
+          ? { ...v, eolicaPotencia: potencia, tieneEolica: true }
+          : v
+      )
+    )
+  }
+
   const renderPage = () => {
     switch (page) {
       case 'dashboard':
@@ -1660,6 +1810,7 @@ function MainApp({ onLogout }: { onLogout: () => void }) {
             paneles={paneles}
             onAddViviendaPanel={handleAddViviendaPanel}
             onDeleteViviendaPanel={handleDeleteViviendaPanel}
+            onAddEolica={handleAddEolica}
           />
         )
       case 'viviendas':
