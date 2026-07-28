@@ -5,7 +5,8 @@ import {
   Zap, Battery, AlertTriangle, CheckCircle,
   Search, X, Users, UserPlus, Shield, User,
   Mail, Key, Phone, Trash2, Send, ChevronLeft,
-  ChevronRight, Menu, Share2
+  ChevronRight, Menu, Share2, Wind, Power, Tv,
+  Cpu, Sliders, ToggleLeft, ToggleRight, Sparkles, RefreshCw
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -2177,10 +2178,457 @@ function Reportes({ viviendas }: { viviendas: ViviendaItem[]; paneles: PanelItem
   )
 }
 
+// ─── APARTADO DE USUARIO - EQUIPOS Y ANIMACIÓN DE VIVIENDA ──────────────────
+export interface ApplianceItem {
+  id: string
+  nombre: string
+  categoria: string
+  kw: number
+  active: boolean
+  iconType: 'ac' | 'ev' | 'fridge' | 'led' | 'iot' | 'pump'
+}
+
+const INITIAL_APPLIANCES: ApplianceItem[] = [
+  { id: 'a1', nombre: 'Aire Acondicionado Split (18,000 BTU)', categoria: 'Climatización', kw: 1.5, active: true, iconType: 'ac' },
+  { id: 'a2', nombre: 'Cargador Vehículo Eléctrico (Wallbox)', categoria: 'Movilidad Eléctrica', kw: 1.2, active: true, iconType: 'ev' },
+  { id: 'a3', nombre: 'Refrigerador Smart Inverter & Freezer', categoria: 'Refrigeración', kw: 0.4, active: true, iconType: 'fridge' },
+  { id: 'a4', nombre: 'Iluminación Smart LED Integrada', categoria: 'Iluminación', kw: 0.2, active: true, iconType: 'led' },
+  { id: 'a5', nombre: 'Servidor Domótico & Sensores IoT', categoria: 'Electrónica & Redes', kw: 0.1, active: true, iconType: 'iot' },
+  { id: 'a6', nombre: 'Bomba de Agua & Termotanque', categoria: 'Servicios de Agua', kw: 0.4, active: false, iconType: 'pump' },
+]
+
+function EquiposConsumoModal({
+  isOpen,
+  onClose,
+  vivienda,
+  onUpdateConsumo,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  vivienda: ViviendaItem
+  onUpdateConsumo: (newConsumo: number) => void
+}) {
+  const [appliances, setAppliances] = useState<ApplianceItem[]>(INITIAL_APPLIANCES)
+
+  if (!isOpen) return null
+
+  const totalKwCalculated = appliances
+    .filter(a => a.active)
+    .reduce((sum, a) => sum + a.kw, 0)
+
+  const handleToggleAppliance = (id: string) => {
+    const updated = appliances.map(a => {
+      if (a.id === id) {
+        return { ...a, active: !a.active }
+      }
+      return a
+    })
+    setAppliances(updated)
+    const newTotal = updated.filter(a => a.active).reduce((sum, a) => sum + a.kw, 0)
+    onUpdateConsumo(parseFloat(newTotal.toFixed(1)))
+  }
+
+  const handleKwChange = (id: string, newKw: number) => {
+    const updated = appliances.map(a => {
+      if (a.id === id) {
+        return { ...a, kw: newKw }
+      }
+      return a
+    })
+    setAppliances(updated)
+    const newTotal = updated.filter(a => a.active).reduce((sum, a) => sum + a.kw, 0)
+    onUpdateConsumo(parseFloat(newTotal.toFixed(1)))
+  }
+
+  const handleOptimizeEco = () => {
+    const updated = appliances.map(a => {
+      if (a.iconType === 'ev') return { ...a, active: false }
+      if (a.iconType === 'ac') return { ...a, kw: 0.9, active: true }
+      return a
+    })
+    setAppliances(updated)
+    const newTotal = updated.filter(a => a.active).reduce((sum, a) => sum + a.kw, 0)
+    onUpdateConsumo(parseFloat(newTotal.toFixed(1)))
+  }
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'ac': return <Zap size={18} color={C.amber} />
+      case 'ev': return <Power size={18} color={C.blueLight} />
+      case 'fridge': return <Activity size={18} color={C.purple} />
+      case 'led': return <Sun size={18} color={C.green} />
+      case 'iot': return <Cpu size={18} color={C.blue} />
+      case 'pump': return <RefreshCw size={18} color={C.amber} />
+      default: return <Zap size={18} color={C.amber} />
+    }
+  }
+
+  return (
+    <Modal title="⚡ Estado y Consumo por Equipos del Hogar" onClose={onClose} maxWidth={720}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Top Summary Banner */}
+        <div style={{
+          background: `linear-gradient(135deg, ${C.panel}, rgba(37,99,235,0.15))`,
+          border: `1px solid ${C.blue}40`, borderRadius: 12, padding: 18,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12
+        }}>
+          <div>
+            <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, textTransform: 'uppercase' }}>
+              Consumo Total Medido
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: C.text, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <span>{vivienda.consumo} kW</span>
+              <span style={{ fontSize: 13, color: vivienda.consumo > vivienda.limite ? C.red : C.green, fontWeight: 600 }}>
+                (Límite: {vivienda.limite} kW)
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+              Sincronizado en tiempo real con el Administrador VPP
+            </div>
+          </div>
+
+          <button
+            onClick={handleOptimizeEco}
+            style={{
+              background: 'rgba(34,197,94,0.15)', border: `1px solid ${C.green}50`,
+              color: C.green, padding: '8px 14px', borderRadius: 8, fontSize: 13,
+              fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+            }}
+          >
+            <Sparkles size={16} /> Activar Modo Eco (Ahorro)
+          </button>
+        </div>
+
+        {/* Appliance Status Bars List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {appliances.map(app => {
+            const pct = totalKwCalculated > 0 ? Math.round((app.kw / totalKwCalculated) * 100) : 0
+            const loadColor = app.kw > 1.0 ? C.red : app.kw >= 0.4 ? C.amber : C.green
+
+            return (
+              <div
+                key={app.id}
+                style={{
+                  ...glass, padding: '16px 20px',
+                  background: app.active ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.2)',
+                  border: app.active ? `1px solid ${C.border}` : '1px solid rgba(255,255,255,0.03)',
+                  opacity: app.active ? 1 : 0.6, transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      background: app.active ? `${loadColor}20` : 'rgba(255,255,255,0.05)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      {getIcon(app.iconType)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{app.nombre}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>{app.categoria}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: app.active ? loadColor : C.dim }}>
+                        {app.active ? `${app.kw.toFixed(1)} kW` : '0.0 kW'}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.dim }}>
+                        {app.active ? `${pct}% del total` : 'Apagado'}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleToggleAppliance(app.id)}
+                      style={{
+                        background: app.active ? `linear-gradient(135deg, ${C.green}, #16a34a)` : 'rgba(255,255,255,0.1)',
+                        color: '#fff', border: 'none', borderRadius: 20, padding: '6px 14px',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                      }}
+                    >
+                      {app.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                      {app.active ? 'ACTIVO' : 'OFF'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Progress / Status Bar (Barra de Estado) */}
+                {app.active && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.muted, marginBottom: 4 }}>
+                      <span>Barra de Carga del Equipo</span>
+                      <span>Potencia ajustada: {app.kw.toFixed(1)} kW</span>
+                    </div>
+                    <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${Math.min(100, (app.kw / 3.0) * 100)}%`,
+                        height: '100%',
+                        background: `linear-gradient(90deg, ${loadColor}, ${loadColor}dd)`,
+                        borderRadius: 4, transition: 'width 0.4s ease'
+                      }} />
+                    </div>
+
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 11, color: C.dim }}>Ajustar kW:</span>
+                      <input
+                        type="range" min="0.1" max="3.0" step="0.1"
+                        value={app.kw}
+                        onChange={e => handleKwChange(app.id, parseFloat(e.target.value))}
+                        style={{ flex: 1, accentColor: loadColor, cursor: 'pointer' }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ fontSize: 12, color: C.muted, textAlign: 'center', marginTop: 6 }}>
+          💡 Al encender/apagar o regular los equipos, el consumo total de la vivienda se actualiza en el panel del Administrador.
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function ViviendaAnimationDiagram({
+  vivienda,
+  panel,
+  onOpenEquiposModal,
+  onToggleEolica,
+}: {
+  vivienda: ViviendaItem
+  panel?: PanelItem
+  onOpenEquiposModal: () => void
+  onToggleEolica: () => void
+}) {
+  const panelGenerado = panel?.potencia || 4.2
+  const eolicaGenerado = vivienda.tieneEolica ? (vivienda.eolicaPotencia || 1.8) : 0
+
+  return (
+    <div style={{
+      ...glassPanel,
+      position: 'relative',
+      overflow: 'hidden',
+      padding: '24px 28px',
+      background: 'radial-gradient(ellipse at 50% 30%, rgba(13,27,58,0.95) 0%, rgba(6,13,26,0.98) 100%)',
+      border: `1px solid ${C.borderBright}`,
+      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      borderRadius: 16
+    }}>
+      {/* Dynamic Keyframe Animations */}
+      <style>{`
+        @keyframes spinBlades {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes pulseSunGlow {
+          0%, 100% { transform: scale(1); opacity: 0.85; }
+          50% { transform: scale(1.12); opacity: 1; }
+        }
+        @keyframes energyDash {
+          to { stroke-dashoffset: -24; }
+        }
+        @keyframes pulseButton {
+          0%, 100% { box-shadow: 0 0 15px rgba(37,99,235,0.4), 0 0 30px rgba(245,158,11,0.2); }
+          50% { box-shadow: 0 0 25px rgba(37,99,235,0.8), 0 0 45px rgba(245,158,11,0.5); }
+        }
+      `}</style>
+
+      {/* Header Info Banner inside Canvas */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 20, zIndex: 2, position: 'relative' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.text }}>
+              Diagrama Energético Animado de {vivienda.nombre}
+            </h3>
+            <Badge estado={vivienda.estado} />
+          </div>
+          <p style={{ margin: '4px 0 0', color: C.muted, fontSize: 13 }}>
+            Sincronización en vivo con Panel Solar ({vivienda.panel}) {vivienda.tieneEolica ? '+ Aerogenerador Eólico' : ''} y Red VPP Administrador
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            onClick={onToggleEolica}
+            style={{
+              background: vivienda.tieneEolica ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+              border: `1px solid ${vivienda.tieneEolica ? C.green : C.border}`,
+              color: vivienda.tieneEolica ? C.green : C.muted,
+              padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+            }}
+          >
+            <Wind size={15} /> {vivienda.tieneEolica ? '💨 Aerogenerador Activo (1.8 kW)' : '+ Añadir Aerogenerador'}
+          </button>
+        </div>
+      </div>
+
+      {/* SVG ANIMATED DIAGRAM CANVAS */}
+      <div style={{ width: '100%', height: 320, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <svg viewBox="0 0 900 320" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          <defs>
+            {/* Glow Filters */}
+            <filter id="glowSun" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="6" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <filter id="glowHouse" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="8" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <linearGradient id="sunGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FBBF24" />
+              <stop offset="100%" stopColor="#F59E0B" />
+            </linearGradient>
+            <linearGradient id="solarPanelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#1e3a8a" />
+              <stop offset="100%" stopColor="#0f172a" />
+            </linearGradient>
+          </defs>
+
+          {/* BACKGROUND ENERGY FIELD GRID */}
+          <line x1="100" y1="280" x2="800" y2="280" stroke="rgba(255,255,255,0.08)" strokeWidth="2" strokeDasharray="4 4" />
+
+          {/* 1. SOLAR PANEL & SUN NODE (LEFT) */}
+          <g transform="translate(110, 40)">
+            {/* Sun Icon */}
+            <g style={{ transformOrigin: '40px 40px', animation: 'pulseSunGlow 3s ease-in-out infinite' }}>
+              <circle cx="40" cy="40" r="24" fill="url(#sunGrad)" filter="url(#glowSun)" />
+              <circle cx="40" cy="40" r="32" fill="none" stroke="#F59E0B" strokeWidth="2" strokeDasharray="6 4" opacity="0.7" />
+            </g>
+
+            {/* Solar Panel Array */}
+            <rect x="0" y="90" width="100" height="60" rx="6" fill="url(#solarPanelGrad)" stroke="#3b82f6" strokeWidth="2" />
+            <line x1="33" y1="90" x2="33" y2="150" stroke="#3b82f6" strokeWidth="1" opacity="0.6" />
+            <line x1="66" y1="90" x2="66" y2="150" stroke="#3b82f6" strokeWidth="1" opacity="0.6" />
+            <line x1="0" y1="120" x2="100" y2="120" stroke="#3b82f6" strokeWidth="1" opacity="0.6" />
+
+            {/* Label */}
+            <rect x="-10" y="160" width="120" height="24" rx="12" fill="rgba(15,23,42,0.85)" stroke="#3b82f6" strokeWidth="1" />
+            <text x="50" y="176" fill="#f1f5f9" fontSize="11" fontWeight="700" textAnchor="middle">
+              ☀️ {panelGenerado} kW Solar
+            </text>
+          </g>
+
+          {/* 2. AEROGENERADOR (WIND TURBINE) NODE (RIGHT) */}
+          <g transform="translate(750, 40)">
+            {/* Tower */}
+            <polygon points="40,90 36,200 44,200" fill="#94a3b8" />
+
+            {/* Turbine Hub & Blades (Animated Spin) */}
+            <g transform="translate(40, 90)">
+              <g style={{ transformOrigin: '0px 0px', animation: vivienda.tieneEolica ? 'spinBlades 2.5s linear infinite' : 'none' }}>
+                <path d="M0,0 L0,-45 C4,-40 6,-20 0,0" fill="#38bdf8" />
+                <path d="M0,0 L39,22.5 C34,25 17,21 0,0" fill="#38bdf8" fillOpacity="0.85" />
+                <path d="M0,0 L-39,22.5 C-34,25 -17,21 0,0" fill="#38bdf8" fillOpacity="0.85" />
+              </g>
+              <circle cx="0" cy="0" r="7" fill="#0f172a" stroke="#38bdf8" strokeWidth="2" />
+            </g>
+
+            {/* Label */}
+            <rect x="-20" y="205" width="120" height="24" rx="12" fill="rgba(15,23,42,0.85)" stroke={vivienda.tieneEolica ? '#38bdf8' : C.dim} strokeWidth="1" />
+            <text x="40" y="221" fill={vivienda.tieneEolica ? '#38bdf8' : C.dim} fontSize="11" fontWeight="700" textAnchor="middle">
+              💨 {eolicaGenerado.toFixed(1)} kW Eólica
+            </text>
+          </g>
+
+          {/* 3. CENTER VIVIENDA / ECO HOUSE NODE */}
+          <g transform="translate(450, 150)" filter="url(#glowHouse)">
+            {/* House Body */}
+            <rect x="-80" y="-30" width="160" height="110" rx="8" fill="rgba(15,27,58,0.9)" stroke="#2563eb" strokeWidth="2.5" />
+
+            {/* Roof with tiles */}
+            <polygon points="-90,-30 0,-100 90,-30" fill="rgba(37,99,235,0.4)" stroke="#3b82f6" strokeWidth="2" />
+            <polygon points="-80,-30 0,-90 80,-30" fill="rgba(13,27,58,0.9)" />
+
+            {/* Solar Roof Attachment */}
+            <rect x="-50" y="-80" width="35" height="22" rx="3" fill="#1e3a8a" stroke="#F59E0B" strokeWidth="1.5" transform="rotate(-25)" />
+
+            {/* Glowing Tech Windows */}
+            <rect x="-60" y="-10" width="30" height="30" rx="4" fill="#F59E0B" fillOpacity="0.85" />
+            <rect x="30" y="-10" width="30" height="30" rx="4" fill="#F59E0B" fillOpacity="0.85" />
+
+            {/* Smart Meter Badge on Front */}
+            <rect x="-25" y="30" width="50" height="40" rx="6" fill="#060d1a" stroke="#22c55e" strokeWidth="1.5" />
+            <text x="0" y="48" fill="#22c55e" fontSize="10" fontWeight="800" textAnchor="middle">METER</text>
+            <text x="0" y="62" fill="#ffffff" fontSize="11" fontWeight="800" textAnchor="middle">{vivienda.consumo} kW</text>
+          </g>
+
+          {/* 4. ANIMATED FLOW LINES */}
+          {/* Solar -> House */}
+          <path
+            d="M 180,130 C 280,130 330,130 370,130"
+            fill="none" stroke="#F59E0B" strokeWidth="3"
+            strokeDasharray="6 6"
+            style={{ animation: 'energyDash 1.2s linear infinite' }}
+          />
+          {/* Wind Turbine -> House */}
+          <path
+            d="M 750,150 C 670,150 610,130 530,130"
+            fill="none" stroke="#38bdf8" strokeWidth="3"
+            strokeDasharray="6 6"
+            style={{ animation: vivienda.tieneEolica ? 'energyDash 1.2s linear infinite' : 'none', opacity: vivienda.tieneEolica ? 1 : 0.2 }}
+          />
+          {/* House -> Battery Storage */}
+          <path
+            d="M 450,230 L 450,270"
+            fill="none" stroke="#22c55e" strokeWidth="3"
+            strokeDasharray="6 6"
+            style={{ animation: 'energyDash 1.5s linear infinite' }}
+          />
+
+          {/* Battery Storage Icon at Bottom */}
+          <g transform="translate(450, 280)">
+            <rect x="-40" y="-12" width="80" height="24" rx="6" fill="rgba(15,23,42,0.9)" stroke="#22c55e" strokeWidth="1.5" />
+            <text x="0" y="4" fill="#22c55e" fontSize="11" fontWeight="700" textAnchor="middle">
+              🔋 Batería {vivienda.bateria}%
+            </text>
+          </g>
+        </svg>
+      </div>
+
+      {/* CENTRAL PROMINENT BUTTON REQUIRED BY USER */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12, zIndex: 10, position: 'relative' }}>
+        <button
+          onClick={onOpenEquiposModal}
+          style={{
+            background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 14,
+            padding: '14px 28px',
+            fontSize: 15,
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            animation: 'pulseButton 3s infinite',
+            transition: 'transform 0.2s ease',
+            letterSpacing: '0.02em'
+          }}
+          onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
+          onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+        >
+          <Zap size={20} color="#F59E0B" />
+          ⚡ Ver Consumo y Equipos (Barra de Estado)
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── APARTADO DE USUARIO (User Portal) ───────────────────────────────────────
 function UserPortal({
   currentUser,
   viviendas,
+  setViviendas,
+  paneles,
   requests,
   setRequests,
   onLogout,
@@ -2188,12 +2636,15 @@ function UserPortal({
 }: {
   currentUser: UserItem
   viviendas: ViviendaItem[]
+  setViviendas?: React.Dispatch<React.SetStateAction<ViviendaItem[]>>
+  paneles?: PanelItem[]
   requests: EnergyRequest[]
   setRequests: React.Dispatch<React.SetStateAction<EnergyRequest[]>>
   onLogout: () => void
   onSwitchAdmin?: () => void
 }) {
   const [activeTab, setActiveTab] = useState<'resumen' | 'pedir' | 'solicitudes' | 'factura'>('resumen')
+  const [showEquiposModal, setShowEquiposModal] = useState(false)
   
   // Request Form States
   const [kwh, setKwh] = useState('2.5')
@@ -2205,11 +2656,41 @@ function UserPortal({
     viviendas.find(v => v.nombre === currentUser.viviendaNombre) ||
     viviendas[0]
 
+  const assignedPanel = paneles?.find(p => p.asignadoA === myVivienda?.nombre || p.id === myVivienda?.panel)
+
   const myRequests = requests.filter(r => r.vivienda === myVivienda?.nombre || r.userId === currentUser.id)
 
   const triggerToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 4000)
+  }
+
+  const handleUpdateConsumo = (newConsumo: number) => {
+    if (!setViviendas || !myVivienda) return
+    setViviendas(prev => prev.map(v => {
+      if (v.id === myVivienda.id) {
+        const nuevoEstado: 'normal' | 'elevado' | 'critico' =
+          newConsumo > v.limite ? 'critico' : newConsumo > (v.limite * 0.75) ? 'elevado' : 'normal'
+        return { ...v, consumo: parseFloat(newConsumo.toFixed(1)), estado: nuevoEstado }
+      }
+      return v
+    }))
+  }
+
+  const handleToggleEolica = () => {
+    if (!setViviendas || !myVivienda) return
+    setViviendas(prev => prev.map(v => {
+      if (v.id === myVivienda.id) {
+        const tiene = !v.tieneEolica
+        return {
+          ...v,
+          tieneEolica: tiene,
+          eolicaPotencia: tiene ? 1.8 : 0
+        }
+      }
+      return v
+    }))
+    triggerToast(myVivienda.tieneEolica ? '💨 Aerogenerador eólico desactivado.' : '💨 Aerogenerador eólico activado (1.8 kW adicionados a tu vivienda).')
   }
 
   const handleCreateEnergyRequest = (e: React.FormEvent) => {
@@ -2368,6 +2849,7 @@ function UserPortal({
         {/* TAB 1: RESUMEN DE LA VIVIENDA */}
         {activeTab === 'resumen' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* Stat Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
               <StatCard icon={<Zap size={20} />} label="Consumo Actual" value={`${myVivienda?.consumo} kW`} sub="Medido en tiempo real" color={C.blue} />
               <StatCard icon={<Sun size={20} />} label="Energía Disponible" value={`${myVivienda?.disponible} kWh`} sub={`Proveniente de ${myVivienda?.panel}`} color={C.amber} />
@@ -2375,6 +2857,27 @@ function UserPortal({
               <StatCard icon={<DollarSign size={20} />} label="Extra Asignado" value={`${myVivienda?.extraAsignado} kWh`} sub="Aprobado por Admin" color={C.purple} />
             </div>
 
+            {/* DIAGRAMA ANIMADO CON PANEL SOLAR Y AEROGENERADOR + BOTÓN INTERACTIVO */}
+            {myVivienda && (
+              <ViviendaAnimationDiagram
+                vivienda={myVivienda}
+                panel={assignedPanel}
+                onOpenEquiposModal={() => setShowEquiposModal(true)}
+                onToggleEolica={handleToggleEolica}
+              />
+            )}
+
+            {/* MODAL DE EQUIPOS CON BARRAS DE ESTADO */}
+            {myVivienda && (
+              <EquiposConsumoModal
+                isOpen={showEquiposModal}
+                onClose={() => setShowEquiposModal(false)}
+                vivienda={myVivienda}
+                onUpdateConsumo={handleUpdateConsumo}
+              />
+            )}
+
+            {/* Battery Monitor */}
             <div style={{ ...glassPanel, padding: 28 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <div>
@@ -2921,6 +3424,8 @@ export default function App() {
       <UserPortal
         currentUser={currentUser}
         viviendas={viviendas}
+        setViviendas={setViviendas}
+        paneles={paneles}
         requests={requests}
         setRequests={setRequests}
         onLogout={() => { setCurrentUser(null); setViewModeOverride(null) }}
